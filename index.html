@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Protocol for BN Construction</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f7f9fc; --card:#ffffff; --muted:#5a677b; --txt:#0f172a;
+    --brand:#2563eb; --brand-2:#06b6d4; --chip-bg:#f2f4f8; --chip-border:#e5e7eb;
+    --ok:#16a34a; --mid:#d97706; --danger:#ef4444;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:linear-gradient(180deg,var(--bg) 0%, #eef2f7 100%);color:var(--txt);font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial}
+  .container{max-width:1200px;margin:0 auto;padding:24px}
+  header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--chip-border);border-radius:16px;padding:16px 18px;box-shadow:0 8px 24px rgba(0,0,0,.06)}
+  .title{font-weight:700;font-size:clamp(18px,2.8vw,26px)}
+  .subtitle{color:var(--muted);font-size:14px}
+  .toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  .search{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--chip-border);border-radius:12px;padding:8px 12px}
+  .search input{flex:1;min-width:520px;background:transparent;border:0;outline:0;color:var(--txt)}
+  .pill{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--chip-border);background:var(--card);color:var(--txt);padding:8px 12px;border-radius:999px;font-size:13px;cursor:pointer;user-select:none}
+  .pill input{accent-color:var(--brand)}
+  .btn{border:1px solid var(--chip-border);background:linear-gradient(180deg,#ffffff,#f9fbff);padding:8px 12px;border-radius:10px;font-size:13px;cursor:pointer}
+  .btn:hover{border-color:var(--brand)}
+
+  .phase{border:1px solid var(--chip-border);border-radius:16px;background:linear-gradient(180deg,var(--card),#fbfdff);box-shadow:0 8px 24px rgba(0,0,0,.06);overflow:hidden;margin:16px 0}
+  .phase-head{display:flex;justify-content:space-between;gap:16px;padding:16px 18px;border-bottom:1px solid var(--chip-border);align-items:center}
+  .phase-title{font-weight:600;font-size:18px}
+  .phase-meta{color:var(--muted);font-size:13px}
+
+  .activity{border-top:1px solid var(--chip-border)}
+  .activity button{width:100%;text-align:left;background:transparent;border:0;color:var(--txt);font-weight:600;padding:14px 18px;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+  .activity button:hover{background:#f6f8fc}
+  .activity button .caret{transition:transform .2s ease}
+  .activity[aria-expanded="true"] button .caret{transform:rotate(90deg)}
+  .activity-panel{display:none;padding:0 18px 16px}
+  .activity[aria-expanded="true"] .activity-panel{display:block}
+
+  .methods{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 4px}
+  .method{background:var(--chip-bg);border:1px solid var(--chip-border);padding:6px 10px;border-radius:999px;font-size:12px;color:var(--muted)}
+  .method--active{outline:2px solid var(--brand); box-shadow:0 0 0 4px rgba(37,99,235,.15); color:var(--txt)}
+  .method--dim{opacity:.45}
+
+  .studies{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .study-chip{position:relative;display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border-radius:10px;font-size:12px;background:var(--chip-bg);border:1px solid var(--chip-border);color:var(--txt);text-decoration:none}
+  .study-chip:hover{border-color:var(--brand)}
+  .study-chip:focus-visible{outline:2px solid var(--brand)}
+  .score{width:8px;height:8px;border-radius:50%}
+  .score.ok{background:var(--ok)}
+  .score.mid{background:var(--mid)}
+
+  /* Destaque inverso: método → estudos */
+  .study--active{outline:2px solid var(--brand); box-shadow:0 0 0 4px rgba(37,99,235,.15)}
+  .study--dim{opacity:.5}
+
+  .refs{background:var(--card);border-top:1px dashed var(--chip-border);padding:14px 18px}
+  .refs h4{margin:0 0 6px 0;font-size:13px;color:var(--muted);font-weight:600}
+  .empty{color:var(--muted);font-size:12px}
+
+  /* Modal de listagem */
+  .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;}
+  .modal.active{display:flex}
+  .modal .backdrop{position:absolute;inset:0;background:rgba(15,23,42,.55)}
+  .modal .dialog{position:relative;background:var(--card);border:1px solid var(--chip-border);border-radius:16px;box-shadow:0 20px 50px rgba(0,0,0,.25);max-width:980px;width:92%;max-height:80vh;display:flex;flex-direction:column}
+  .modal header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--chip-border)}
+  .modal header h3{margin:0;font-size:16px}
+  .modal .content{padding:12px 16px;overflow:auto}
+  .modal .list{display:grid;grid-template-columns:1fr;gap:8px}
+  .modal .item{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;background:var(--chip-bg);border:1px solid var(--chip-border);border-radius:10px}
+  .modal .item .code{font-weight:600;color:var(--brand)}
+  .modal .close{border:1px solid var(--chip-border);background:linear-gradient(180deg,#ffffff,#f9fbff);border-radius:8px;padding:6px 10px;cursor:pointer}
+
+  footer{margin:28px 0 12px;color:var(--muted);font-size:12px;text-align:center}
+  .brand-grad{background:linear-gradient(90deg,var(--brand),var(--brand-2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  @media (max-width:640px){.toolbar{flex-direction:column;align-items:stretch}.search input{min-width:unset}}
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div>
+      <div class="title">Protocol for Bayesian Network Construction in <span class="brand-grad">Software Engineering</span></div>
+      <div class="subtitle">Browse the protocol's phases and activities. Within each activity, you can quickly explore the mapped studies. Hover over a study to see its associated methods, or hover over a method to see which studies use it. For each phase, exemplar studies provide methodological details that illustrate good practices for carrying out the activities.</div>
+    </div>
+    <div class="toolbar">
+      <label class="search">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 21L16.65 16.65" stroke="#8aa2c8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M10.5 18C14.6421 18 18 14.6421 18 10.5C18 6.35786 14.6421 3 10.5 3C6.35786 3 3 6.35786 3 10.5C3 14.6421 6.35786 18 10.5 18Z" stroke="#8aa2c8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <input id="q" placeholder="Search by study (e.g., PS4), title, or method" />
+      </label>
+      <label class="pill"><input type="checkbox" id="onlyTop"/> Only studies with a score of 1.0</label>
+      <button class="btn" id="expandAll">Expand/Collapse</button>
+      <button class="btn" id="listStudies">List studies</button>
+    </div>
+  </header>
+
+  <div id="phases"></div>
+
+  <!-- Modal de Listagem de Estudos -->
+  <div id="studiesModal" class="modal" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="backdrop" data-close></div>
+    <div class="dialog">
+      <header>
+        <h3>Protocol studies (ID — title)</h3>
+        <button class="close" id="closeModal" aria-label="Fechar">Close</button>
+      </header>
+      <div class="content">
+        <div id="studiesList" class="list"></div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <div>This webpage operationalizes our protocol for constructing expert-based or hybrid Bayesian networks in software engineering, offering an interactive view of its phases, activities, studies, and methods.
+For full methodological details, see our article published in <i>ACM Transactions on Software Engineering and Methodology (TOSEM)</i>.</div>
+  </footer>
+</div>
+
+<script>
+// =============================
+// MODELO DE DADOS (edite aqui)
+// =============================
+// Convenção de score: 1.0 (máxima), 0.5 (parcial)
+// Para destaque de métodos por estudo, use o campo `methods` EM CADA ATIVIDADE.
+const DATA = [
+  {
+    phase: '1. Structure Building',
+    info: 'This phase focuses on defining the BN structure by identifying relevant variables (nodes), their possible states, and the relationships between them.',
+    exemplarReferences: [
+        'Emilia Mendes, Pilar Rodriguez, Vitor Freitas, Simon Baker, and Mohamed Amine Atoui. 2018. Towards improving decision making and estimating the value of decisions in value-based software engineering: the VALUE framework. <i>Software Quality Journal</i>. 26, 2 (2018), 607-656.',
+        'Emilia Mendes. 2012. Using knowledge elicitation to improve Web effort estimation: Lessons from six industrial case studies. In <i>Proceedings of the 34th International Conference on Software Engineering (ICSE)</i>. IEEE, 1112-1121.',
+        'Mirko Perkusich, Kyller Costa Gorgônio, Hyggo Almeida, and Angelo Perkusich. 2017. Assisting the continuous improvement of Scrum projects using metrics and Bayesian networks. <i>Journal of Software: Evolution and Process</i>. 29, 6 (2017), e1835.'
+    ],
+    activities: [
+      {
+        name: '1.1. Identification of nodes/variables',
+        methods: ['Interviews', 'Focus groups', 'Survey with practitioners', 'Literature review', 'Selection of variables from a dataset', 'Delphi method', 'Abstraction sheets', 'Grounded theory', 'Software analysis', 'Idioms', 'Life cycle model (SDLC)', 'Risk-centric modeling', 'GQM paradigm', 'Top-down approach', 'Quality model', 'Value model', 'Argumentation model', 'K2 algorithm', 'NPC algorithm', 'Learning from data using an automated tool'],
+        studies: [
+          { code:'PS1',  title:'A process to calculate the uncertainty of software metrics-based models using Bayesian networks',  url:'https://ksiresearchorg.ipage.com/seke/seke17paper/seke17paper_172.pdf', score:1.0, methods:['Interviews', 'Abstraction sheets', 'GQM paradigm'] },
+          { code:'PS2', title:'An influence diagram approach to automating lead time estimation in Agile Kanban project management', url:'https://www.sciencedirect.com/science/article/abs/pii/S0957417421012252', score:1.0, methods:['Literature review'] },
+          { code:'PS3', title:'Towards improving decision making and estimating the value of decisions in value-based software engineering: the VALUE framework', url:'https://link.springer.com/article/10.1007/s11219-017-9360-z', score:1.0, methods:['Interviews', 'Focus groups', 'Grounded theory', 'Value model'] },
+          { code:'PS4', title:'Using knowledge elicitation to improve Web effort estimation: Lessons from six industrial case studies', url:'https://ieeexplore.ieee.org/abstract/document/6227108', score:1.0, methods:['Focus groups', 'Literature review', 'Selection of variables from a dataset'] },
+          { code:'PS5', title:'An expert-based requirements effort estimation model using bayesian networks', url:'https://link.springer.com/chapter/10.1007/978-3-319-27033-3_6', score:1.0, methods:['Interviews','Focus groups','Grounded theory'] },
+          { code:'PS6', title:'Using expert-based bayesian networks as decision support systems to improve project management of healthcare software projects', url:'https://www.scitepress.org/PublishedPapers/2013/44341/pdf/index.html', score:1.0, methods:['Focus groups', 'Literature review', 'Selection of variables from a dataset'] },
+          { code:'PS7', title:'Assisting the continuous improvement of scrum projects using metrics and bayesian networks', url:'https://onlinelibrary.wiley.com/doi/epdf/10.1002/smr.1835', score:1.0, methods:['Literature review', 'Delphi method', 'Idioms', 'Top-down approach'] },
+          { code:'PS8', title:'A bayesian networks-based approach to assess and improve the teamwork quality of agile teams', url:'https://www.sciencedirect.com/science/article/abs/pii/S0950584917300204', score:1.0, methods:['Literature review', 'Top-down approach'] },
+          { code:'PS9', title:'A method to build Bayesian networks based on artifacts and metrics to assess agile projects', url:'https://www.ksiresearch.org/seke/seke16paper/seke16paper_213.pdf', score:1.0, methods:['Literature review', 'GQM paradigm'] },
+          { code:'PS10', title:'Advanced Bayesian Network for Task Effort Estimation in Agile Software Development', url:'https://www.mdpi.com/2076-3417/13/16/9465', score:1.0, methods:['GQM paradigm'] },
+          { code:'PS11', title:'Software defects estimation using metrics of early phases of software development life cycle', url:'https://link.springer.com/article/10.1007/s13198-014-0326-2', score:1.0, methods:['Literature review', 'Life cycle model (SDLC)'] },
+          { code:'PS12', title:'Predicting the flow of defect correction effort using a Bayesian network model', url:'https://link.springer.com/article/10.1007/s10664-011-9175-7', score:1.0, methods:['GQM paradigm'] },
+          { code:'PS13', title:'Bayesian networks for evidence-based decision-making in software engineering', url:'https://ieeexplore.ieee.org/abstract/document/6808495', score:1.0, methods:['Literature review', 'Idioms'] },
+          { code:'PS14', title:'Assisting novice software designers by an expert designer agent', url:'https://www.sciencedirect.com/science/article/abs/pii/S0957417407001716', score:1.0, methods:['Literature review'] },
+          { code:'PS15', title:'Constructing a Bayesian Belief Network to predict final quality in embedded system development', url:'https://globals.ieice.org/en_transactions/information/10.1093/ietisy/e88-d.6.1134/_p', score:0.5, methods:['Life cycle model (SDLC)'] },
+          { code:'PS16', title:'An approach to probabilistic effort estimation for military avionics software maintenance by considering structural characteristics', url:'https://ieeexplore.ieee.org/abstract/document/4425881', score:1.0, methods:['Interviews'] },
+          { code:'PS17', title:'Scenario-based assessment of nonfunctional requirements', url:'https://ieeexplore.ieee.org/abstract/document/1438375', score:1.0, methods:['Literature review'] },
+          { code:'PS18', title:'Improving fault prediction using Bayesian networks for the development of embedded software applications', url:'https://onlinelibrary.wiley.com/doi/abs/10.1002/stvr.353', score:1.0, methods:['Interviews'] },
+          { code:'PS19', title:'On the effectiveness of early life cycle defect prediction with Bayesian nets', url:'https://link.springer.com/article/10.1007/s10664-008-9072-x', score:1.0, methods:['Focus groups', 'Literature review', 'Life cycle model (SDLC)'] },
+          { code:'PS21', title:'Making resource decisions for software projects', url:'https://ieeexplore.ieee.org/abstract/document/1317462', score:1.0, methods:['Literature review', 'Life cycle model (SDLC)'] },
+          { code:'PS22', title:'Predicting project velocity in xp using a learning dynamic bayesian network model', url:'https://ieeexplore.ieee.org/abstract/document/4624275', score:1.0, methods:['Life cycle model (SDLC)'] },
+          { code:'PS23', title:'A framework for integrated software quality prediction using bayesian nets', url:'https://link.springer.com/chapter/10.1007/978-3-642-21934-4_26', score:1.0, methods:['Literature review'] },
+          { code:'PS24', title:'Bayesian networks applied to software IV&V', url:'https://ieeexplore.ieee.org/abstract/document/1521218', score:1.0, methods:['Literature review'] },
+          { code:'PS25', title:'Is my software good enough to release? - A probabilistic assessment methodology', url:'https://ieeexplore.ieee.org/abstract/document/1521189', score:1.0, methods:['Literature review'] },
+          { code:'PS27', title:'A probabilistic model for predicting software development effort', url:'https://ieeexplore.ieee.org/abstract/document/1492375', score:1.0, methods:['Literature review', 'Selection of variables from a dataset'] },
+          { code:'PS28', title:'On the use of Bayesian belief networks for the prediction of software productivity', url:'https://www.sciencedirect.com/science/article/abs/pii/S0950584902001635', score:1.0, methods:['Selection of variables from a dataset'] },
+          { code:'PS29', title:'The use of multilegged arguments to increase confidence in safety claims for software-based systems: A study based on a BBN analysis of an idealized example', url:'https://ieeexplore.ieee.org/abstract/document/4160972', score:1.0, methods:['Argumentation model'] },
+          { code:'PS30', title:'Predicting software suitability using a Bayesian belief network', url:'https://ieeexplore.ieee.org/abstract/document/1607435', score:1.0, methods:['Literature review'] },
+          { code:'PS31', title:'A bayesian network approach to assist on the interpretation of software metrics', url:'https://dl.acm.org/doi/abs/10.1145/2695664.2695749', score:1.0, methods:['Idioms'] },
+          { code:'PS32', title:'Predicting software test effort in iterative development using a dynamic Bayesian network', url:'https://www.diva-portal.org/smash/record.jsf?pid=diva2%3A835329&dswid=6444', score:1.0, methods:['Literature review'] },
+          { code:'PS33', title:'Bayesian graphical models for software testing', url:'https://ieeexplore.ieee.org/abstract/document/1000453', score:0.5, methods:['Quality model'] },
+          { code:'PS34', title:'A technique for early prediction of software reliability based on design metrics', url:'https://link.springer.com/article/10.1007/s13198-011-0078-1', score:1.0, methods:['Literature review'] },
+          { code:'PS35', title:'A Probabilistic Approach for Change Impact Prediction in Object-Oriented Systems', url:'https://www.researchgate.net/profile/Hakim-Lounis/publication/220827721_A_Probabilistic_Approach_for_Change_Impact_Prediction_in_Object-Oriented_Systems/links/54638c460cf2837efdb34088/A-Probabilistic-Approach-for-Change-Impact-Prediction-in-Object-Oriented-Systems.pdf', score:1.0, methods:['Literature review'] },
+          { code:'PS36', title:'Using bayesian belief networks to predict change propagation in software systems', url:'https://ieeexplore.ieee.org/abstract/document/4268252', score:1.0, methods:['Software analysis'] },
+          { code:'PS37', title:'Bayesian networks-based risk identification approach for software process risk: the context of Chinese trustworthy software', url:'https://www.worldscientific.com/doi/abs/10.1142/S0219622016500401', score:1.0, methods:['Interviews', 'Literature review', 'Risk-centric modeling'] },
+          { code:'PS38', title:'Toward predicting software development success from the perspective of practitioners: an exploratory Bayesian model', url:'https://journals.sagepub.com/doi/abs/10.1057/palgrave.jit.2000044', score:1.0, methods:['Literature review'] },
+          { code:'PS39', title:'User story estimation based on the complexity decomposition using Bayesian networks', url:'https://link.springer.com/article/10.1134/s0361768820080095', score:1.0, methods:['Literature review'] },
+          { code:'PS40', title:'Effort Prediction in Agile Software Development with Bayesian Networks', url:'https://www.scitepress.org/PublishedPapers/2019/78428/78428.pdf', score:1.0, methods:['Literature review', 'Top-down approach'] },
+          { code:'PS41', title:'Using Bayesian Networks to Support Managing Technological Risk on Software Projects', url:'https://sol.sbc.org.br/index.php/ise/article/view/17277', score:1.0, methods:['Interviews', 'Grounded theory', 'Risk-centric modeling'] },
+          { code:'PS42', title:'A method to estimate software strategic indicators in software development: An industrial application', url:'https://www.sciencedirect.com/science/article/abs/pii/S0950584920301890', score:1.0, methods:['Focus groups', 'Literature review', 'Quality model'] },
+          { code:'PS43', title:'Bayesian Analysis in Predicting the Success Rate of the Scrum-Based Software Development Project Under Stochastic Environment', url:'https://pradana.io/wp-content/uploads/2025/08/Bayesian-Analysis-in-Predicting-the-Success-Rate-of-the-Scrum-based-Software-Development-Project-under-Stochastic-Environment_watermark.pdf', score:1.0, methods:['Literature review'] },
+          { code:'PS44', title:'Requirement Change Prediction Model for Small Software Systems', url:'https://www.mdpi.com/2073-431X/12/8/164', score:1.0, methods:['Literature review'] },
+          { code:'PS45', title:'A Bayesian critical path method for managing common risks in software project scheduling', url:'https://dl.acm.org/doi/abs/10.1145/3287921.3287962', score:1.0, methods:['Literature review', 'Risk-centric modeling'] },
+          { code:'PS46', title:'Analysing and modelling runtime architectural stability for self-adaptive software', url:'https://www.sciencedirect.com/science/article/pii/S0164121217301620?casa_token=hlbsfc1mR9gAAAAA:I0X0AITN3ibsGDt7Lfzzh1051lIr_tNZ7mMqWUVhbFcFV7mImTUI7hzirbim_GgTijUahvqs7w', score:1.0, methods:['Literature review'] },
+          { code:'PS47', title:'A Bayesian networks-based method to analyze the validity of the data of software measurement programs', url:'https://ieeexplore.ieee.org/abstract/document/9246551', score:1.0, methods:['Interviews', 'Focus groups', 'Idioms', 'GQM paradigm'] },
+          { code:'PS48', title:'Modeling web quality using a probabilistic approach: An empirical validation', url:'https://dl.acm.org/doi/abs/10.1145/1806916.1806918', score:1.0, methods:['Literature review', 'Idioms', 'GQM paradigm'] },
+          { code:'PS49', title:'A multi-criteria distribution model for global software development projects', url:'https://link.springer.com/article/10.1007/s13173-010-0010-6', score:1.0, methods:['Literature review'] },
+          { code:'PS50', title:'A prioritization approach for software test cases based on bayesian networks', url:'https://link.springer.com/chapter/10.1007/978-3-540-71289-3_22', score:1.0, methods:['Quality model'] },
+          { code:'PS51', title:'Test case prioritisation during web application testing', url:'https://www.inderscienceonline.com/doi/abs/10.1504/IJCAT.2017.088200', score:1.0, methods:['Literature review'] },
+          { code:'PS52', title:'Probabilistic risk assessment for security requirements: A preliminary study', url:'https://ieeexplore.ieee.org/abstract/document/5991999', score:1.0, methods:['Literature review', 'Idioms', 'Risk-centric modeling'] },
+          { code:'PS53', title:'V&V-based remaining fault estimation model for safety–critical software of a nuclear power plant', url:'https://www.sciencedirect.com/science/article/pii/S0306454912003039', score:1.0, methods:['Literature review', 'Life cycle model (SDLC)'] },
+          { code:'PS54', title:'A bayesian belief network based model for predicting software faults in early phase of software development process', url:'https://link.springer.com/article/10.1007/s10489-017-1078-x', score:0.5, methods:['Life cycle model (SDLC)'] },
+          { code:'PS55', title:'Maintenance process modeling and dynamic estimations based on Bayesian networks and association rules', url:'https://onlinelibrary.wiley.com/doi/full/10.1002/smr.2163', score:1.0, methods:['Literature review'] },
+          { code:'PS56', title:'Development of a Bayesian belief network model for software reliability quantification of digital protection systems in nuclear power plants', url:'https://www.sciencedirect.com/science/article/pii/S0306454918302299', score:1.0, methods:['Literature review', 'Life cycle model (SDLC)'] },
+          { code:'PS57', title:'Data-driven risk management for requirements engineering: An automated approach based on Bayesian networks', url:'https://ieeexplore.ieee.org/abstract/document/9218189', score:1.0, methods:['Survey with practitioners', 'Grounded theory'] },
+          { code:'PS58', title:'Supporting defect causal analysis in practice with cross-company data on causes of requirements engineering problems', url:'https://ieeexplore.ieee.org/abstract/document/7965446', score:1.0, methods:['Survey with practitioners', 'Literature review', 'Grounded theory', 'Risk-centric modeling'] },
+          { code:'PS59', title:'Intelligent analysis model for outsourced software project risk using constraint-based Bayesian Network', url:'https://www.researchgate.net/profile/Xiangzhou-Zhang-2/publication/265053365_Intelligent_Analysis_Model_for_Outsourced_Software_Project_Risk_Using_Constraint-based_Bayesian_Network/links/55f6527a08ae6a34f6633272/Intelligent-Analysis-Model-for-Outsourced-Software-Project-Risk-Using-Constraint-based-Bayesian-Network.pdf', score:1.0, methods:['Interviews', 'Literature review', 'Risk-centric modeling'] },
+          { code:'PS60', title:'Software project risk analysis using Bayesian networks with causality constraints', url:'https://www.sciencedirect.com/science/article/pii/S0167923612003338', score:1.0, methods:['Literature review', 'Risk-centric modeling'] },
+          { code:'PS61', title:'Bayesian belief networks as a software productivity estimation tool', url:'https://d1wqtxts1xzle7.cloudfront.net/30803925/10.1.1.108.7639-libre.pdf?1363398575=&response-content-disposition=inline%3B+filename%3DBayesian_belief_networks_as_a_software_p.pdf&Expires=1775698871&Signature=ABlMOEIOGDeTFRzyKu4T1k9JdXlPkX2hlt76o2CW2S61sFDGK0FeUEQxLJxKLSV4hjUwNfJyZjzGcFACE~wgwNfomfLt8nTdxV0mYBj0QxORIvjhmyR4nw3g1tNa6W4FxXpGuWNM0ShfpbakhwU4NpBeE3LHKdiykaYlKCEaYVmbJXU26TgxQj9vTBZA1j4sp6h8W0DLjKVBdfAHw-KL-Cfmp3tiI1PM8w2OxhYQUX3oNzK-UqIWb~6NClrzX6SKlLrlxHxTclI9NRQS17K1wnmzCdQhR5~ZC5ED2EdyYzL~h4FmFYZ2~fsNGdtO~ebrhPUNRVrrHFndaZ3K5nnQ-g__&Key-Pair-Id=APKAJLOHF5GGSLRBV4ZA', score:1.0, methods:['K2 algorithm'] },
+          { code:'PS62', title:'A Bayesian belief network cost estimation model that incorporates cultural and project leadership factors', url:'https://ieeexplore.ieee.org/abstract/document/5356306', score:1.0, methods:['Interviews', 'Literature review'] },
+          { code:'PS63', title:'The use of a bayesian network for web effort estimation', url:'https://link.springer.com/chapter/10.1007/978-3-540-73597-7_8', score:1.0, methods:['Literature review', 'NPC algorithm'] },
+          { code:'PS64', title:'Software project schedule variance prediction using Bayesian Network', url:'https://ieeexplore.ieee.org/abstract/document/5552847/', score:1.0, methods:['Focus groups', 'Survey with practitioners'] },
+          { code:'PS65', title:'Probabilistic and analytical estimation of software development team size', url:'https://journals.sagepub.com/doi/abs/10.3233/HIS-2010-0110', score:0.5, methods:['Learning from data using an automated tool'] },
+          { code:'PS66', title:'Multi-step generation of bayesian networks models for software projects estimations', url:'https://link.springer.com/article/10.1080/18756891.2013.805583', score:0.5, methods:['Learning from data using an automated tool'] }
+        ]
+      },
+      {
+        name: '1.2. Identification of node values/states',
+        methods: ['Expert-derived categories/thresholds', 'Automatic discretization', 'Literature review'],
+        studies: [
+          { code:'PS2', title:'An influence diagram approach to automating lead time estimation in Agile Kanban project management', url:'https://www.sciencedirect.com/science/article/abs/pii/S0957417421012252', score:1.0, methods:['Expert-derived categories/thresholds'] },
+          { code:'PS3', title:'Towards improving decision making and estimating the value of decisions in value-based software engineering: the VALUE framework', url:'https://link.springer.com/article/10.1007/s11219-017-9360-z', score:1.0, methods:['Expert-derived categories/thresholds'] },
+          { code:'PS4', title:'Using knowledge elicitation to improve Web effort estimation: Lessons from six industrial case studies', url:'https://ieeexplore.ieee.org/abstract/document/6227108', score:1.0, methods:['Expert-derived categories/thresholds'] },
+          { code:'PS5', title:'An expert-based requirements effort estimation model using bayesian networks', url:'https://link.springer.com/chapter/10.1007/978-3-319-27033-3_6', score:1.0, methods:['Expert-derived categories/thresholds'] },
+          { code:'PS6', title:'Using expert-based bayesian networks as decision support systems to improve project management of healthcare software projects', url:'https://www.scitepress.org/PublishedPapers/2013/44341/pdf/index.html', score:1.0, methods:['Expert-derived categories/thresholds'] },
+          { code:'PS7', title:'Assisting the continuous improvement of scrum projects using metrics and bayesian networks', url:'https://onlinelibrary.wiley.com/doi/epdf/10.1002/smr.1835', score:1.0, methods:['Expert-derived categories/thresholds'] },
+          { code:'PS8', title:'A bayesian networks-based approach to assess and improve the teamwork quality of agile teams', url:'https://www.sciencedirect.com/science/article/abs/pii/S0950584917300204', score:1.0, methods:['Expert-derived categories/thresholds'] },
+          { code:'PS9', title:'A method to build Bayesian networks based on artifacts and metrics to assess agile projects', url:'https://www.ksiresearch.org/seke/seke16paper/seke16paper_213.pdf', score:1.0, methods:['Expert-derived categories/thresholds'] },
+          { code:'PS10', title:'Advanced Bayesian Network for Task Effort Estimation in Agile Software Development', url:'https://www.mdpi.com/2076-3417/13/16/9465', score:1.0, methods:['Expert-derived categories/thresholds'] },
+          { code:'PS11', title:'Software defects estimation using metrics of early phases of software development life cycle', url:'https://link.springer.com/article/10.1007/s13198-014-0326-2', score:0.5, methods:['Expert-derived categories/thresholds'] },
+          { code:'PS12', title:'Predicting the flow of defect correction effort using a Bayesian network model', url:'https://link.springer.com/article/10.1007/s10664-011-9175-7', score:1.0, methods:['Expert-derived categories/thresholds', 'Automatic discretization'] },
+          { code:'PS13', title:'Bayesian networks for evidence-based decision-making in software engineering', url:'https://ieeexplore.ieee.org/abstract/document/6808495', score:0.5, methods:['Expert-derived categories/thresholds'] },
+          { code:'PS15', title:'Constructing a Bayesian Belief Network to predict final quality in embedded system development', url:'https://globals.ieice.org/en_transactions/information/10.1093/ietisy/e88-d.6.1134/_p', score:1.0, methods:['Expert-derived categories/thresholds'] },
+          { code:'PS16', title:'An approach to probabilistic effort estimation for military avionics software maintenance by considering structural characteristics', url:'https://ieeexplore.ieee.org/abstract/document/4425881', score:1.0, methods:['Expert-derived categories/thresholds'] },
+          { code:'PS17', title:'Scenario-based assessment of nonfunctional requirements', url:'https://ieeexplore.ieee.org/abstract/document/1438375', score:0.5, methods:['Expert-derived categories/thresholds'] },
+          { code:'PS19', title:'On the effectiveness of early life cycle defect prediction with Bayesian nets', url:'https://link.springer.com/article/10.1007/s10664-008-9072-x', score:0.5, methods:['Expert-derived categories/thresholds'] },
+          { code:'PS21', title:'Making resource decisions for software projects', url:'https://ieeexplore.ieee.org/abstract/document/1317462', score:0.5, methods:['Expert-derived categories/thresholds'] },
+          { code:'PS24', title:'Bayesian networks applied to software IV&V', url:'https://ieeexplore.ieee.org/abstract/document/1521218', score:0.5, methods:['Expert-derived categories/thresholds'] },
+          { code:'PS25', title:'Is my software good enough to release? - A probabilistic assessment methodology', url:'https://ieeexplore.ieee.org/abstract/document/1521189', score:1.0, methods:['Expert-derived categories/thresholds'] },
+          { code:'PS27', title:'A probabilistic model for predicting software development effort', url:'https://ieeexplore.ieee.org/abstract/document/1492375', score:1.0, methods:['Expert-derived categories/thresholds', 'Automatic discretization'] },
+          { code:'PS29', title:'The use of multilegged arguments to increase confidence in safety claims for software-based systems: A study based on a BBN analysis of an idealized example', url:'https://ieeexplore.ieee.org/abstract/document/4160972', score:0.5, methods:['Expert-derived categories/thresholds'] },
+          { code:'PS31', title:'A bayesian network approach to assist on the interpretation of software metrics', url:'https://dl.acm.org/doi/abs/10.1145/2695664.2695749', score:1.0, methods:['Expert-derived categories/thresholds'] },
+          { code:'PS35', title:'A Probabilistic Approach for Change Impact Prediction in Object-Oriented Systems', url:'https://www.researchgate.net/profile/Hakim-Lounis/publication/220827721_A_Probabilistic_Approach_for_Change_Impact_Prediction_in_Object-Oriented_Systems/links/54638c460cf2837efdb34088/A-Probabilistic-Approach-for-Change-Impact-Prediction-in-Object-Oriented-Systems.pdf', score:1.0, methods:['Automatic discretization'] },
+          { code:'PS39', title:'User story estimation based on the complexity decomposition using Bayesian networks', url:'https://link.springer.com/article/10.1134/s0361768820080095', score:0.5, methods:['Expert-derived categories/thresholds'] },
+          { code:'PS42', title:'A method to estimate software strategic indicators in software development: An industrial application', url:'https://www.sciencedirect.com/science/article/abs/pii/S0950584920301890', score:1.0, methods:['Expert-derived categories/thresholds', 'Automatic discretization'] },
+          { code:'PS47', title:'A Bayesian networks-based method to analyze the validity of the data of software measurement programs', url:'https://ieeexplore.ieee.org/abstract/document/9246551', score:0.5, methods:['Expert-derived categories/thresholds'] },
+          { code:'PS48', title:'Modeling web quality using a probabilistic approach: An empirical validation', url:'https://dl.acm.org/doi/abs/10.1145/1806916.1806918', score:0.5, methods:['Automatic discretization'] },
+          { code:'PS50', title:'A prioritization approach for software test cases based on bayesian networks', url:'https://link.springer.com/chapter/10.1007/978-3-540-71289-3_22', score:1.0, methods:['Expert-derived categories/thresholds'] },
+          { code:'PS52', title:'Probabilistic risk assessment for security requirements: A preliminary study', url:'https://ieeexplore.ieee.org/abstract/document/5991999', score:0.5, methods:['Expert-derived categories/thresholds'] },
+          { code:'PS53', title:'V&V-based remaining fault estimation model for safety–critical software of a nuclear power plant', url:'https://www.sciencedirect.com/science/article/pii/S0306454912003039', score:1.0, methods:['Expert-derived categories/thresholds'] },
+          { code:'PS55', title:'Maintenance process modeling and dynamic estimations based on Bayesian networks and association rules', url:'https://onlinelibrary.wiley.com/doi/full/10.1002/smr.2163', score:1.0, methods:['Expert-derived categories/thresholds', 'Automatic discretization'] },
+          { code:'PS56', title:'Development of a Bayesian belief network model for software reliability quantification of digital protection systems in nuclear power plants', url:'https://www.sciencedirect.com/science/article/pii/S0306454918302299', score:0.5, methods:['Expert-derived categories/thresholds'] },
+          { code:'PS59', title:'Intelligent analysis model for outsourced software project risk using constraint-based Bayesian Network', url:'https://www.researchgate.net/profile/Xiangzhou-Zhang-2/publication/265053365_Intelligent_Analysis_Model_for_Outsourced_Software_Project_Risk_Using_Constraint-based_Bayesian_Network/links/55f6527a08ae6a34f6633272/Intelligent-Analysis-Model-for-Outsourced-Software-Project-Risk-Using-Constraint-based-Bayesian-Network.pdf', score:1.0, methods:['Expert-derived categories/thresholds'] },
+          { code:'PS60', title:'Software project risk analysis using Bayesian networks with causality constraints', url:'https://www.sciencedirect.com/science/article/pii/S0167923612003338', score:1.0, methods:['Literature review'] },
+          { code:'PS61', title:'Bayesian belief networks as a software productivity estimation tool', url:'https://d1wqtxts1xzle7.cloudfront.net/30803925/10.1.1.108.7639-libre.pdf?1363398575=&response-content-disposition=inline%3B+filename%3DBayesian_belief_networks_as_a_software_p.pdf&Expires=1775698871&Signature=ABlMOEIOGDeTFRzyKu4T1k9JdXlPkX2hlt76o2CW2S61sFDGK0FeUEQxLJxKLSV4hjUwNfJyZjzGcFACE~wgwNfomfLt8nTdxV0mYBj0QxORIvjhmyR4nw3g1tNa6W4FxXpGuWNM0ShfpbakhwU4NpBeE3LHKdiykaYlKCEaYVmbJXU26TgxQj9vTBZA1j4sp6h8W0DLjKVBdfAHw-KL-Cfmp3tiI1PM8w2OxhYQUX3oNzK-UqIWb~6NClrzX6SKlLrlxHxTclI9NRQS17K1wnmzCdQhR5~ZC5ED2EdyYzL~h4FmFYZ2~fsNGdtO~ebrhPUNRVrrHFndaZ3K5nnQ-g__&Key-Pair-Id=APKAJLOHF5GGSLRBV4ZA', score:0.5, methods:['Expert-derived categories/thresholds', 'Automatic discretization'] },
+          { code:'PS62', title:'A Bayesian belief network cost estimation model that incorporates cultural and project leadership factors', url:'https://ieeexplore.ieee.org/abstract/document/5356306', score:0.5, methods:['Automatic discretization'] },
+          { code:'PS63', title:'The use of a bayesian network for web effort estimation', url:'https://link.springer.com/chapter/10.1007/978-3-540-73597-7_8', score:1.0, methods:['Automatic discretization'] },
+          { code:'PS64', title:'Software project schedule variance prediction using Bayesian Network', url:'https://ieeexplore.ieee.org/abstract/document/5552847/', score:1.0, methods:['Automatic discretization'] },
+          { code:'PS65', title:'Probabilistic and analytical estimation of software development team size', url:'https://journals.sagepub.com/doi/abs/10.3233/HIS-2010-0110', score:1.0, methods:['Automatic discretization'] },
+          { code:'PS66', title:'Multi-step generation of bayesian networks models for software projects estimations', url:'https://link.springer.com/article/10.1080/18756891.2013.805583', score:0.5, methods:['Expert-derived categories/thresholds', 'Automatic discretization'] }
+        ]
+      },
+      {
+        name: '1.3. Identification of relationships',
+        methods: ['Interviews', 'Focus groups', 'Survey with practitioners', 'Literature review', 'Delphi method', 'Abstraction sheets', 'Grounded theory', 'Statistical analysis', 'Software analysis', 'Idioms', 'Divorcing', 'D-separation', 'Life cycle model (SDLC)', 'Risk-centric modeling', 'GQM paradigm', 'Top-down approach', 'Quality model', 'Value model', 'Argumentation model', 'K2 algorithm', 'NPC algorithm', 'Cheng\'s algorithm', 'V-structure discovery algorithm', 'Learning from data using an automated tool'],
+        studies: [
+          { code:'PS1',  title:'A process to calculate the uncertainty of software metrics-based models using Bayesian networks',  url:'https://ksiresearchorg.ipage.com/seke/seke17paper/seke17paper_172.pdf', score:1.0, methods:['Interviews', 'Abstraction sheets', 'GQM paradigm'] },
+          { code:'PS2', title:'An influence diagram approach to automating lead time estimation in Agile Kanban project management', url:'https://www.sciencedirect.com/science/article/abs/pii/S0957417421012252', score:0.5, methods:['Literature review'] },
+          { code:'PS3', title:'Towards improving decision making and estimating the value of decisions in value-based software engineering: the VALUE framework', url:'https://link.springer.com/article/10.1007/s11219-017-9360-z', score:1.0, methods:['Focus groups', 'Value model', 'Divorcing', 'Learning from data using an automated tool'] },
+          { code:'PS4', title:'Using knowledge elicitation to improve Web effort estimation: Lessons from six industrial case studies', url:'https://ieeexplore.ieee.org/abstract/document/6227108', score:1.0, methods:['Focus groups', 'Literature review', 'D-separation', 'Divorcing'] },
+          { code:'PS5', title:'An expert-based requirements effort estimation model using bayesian networks', url:'https://link.springer.com/chapter/10.1007/978-3-319-27033-3_6', score:1.0, methods:['Focus groups','Divorcing'] },
+          { code:'PS6', title:'Using expert-based bayesian networks as decision support systems to improve project management of healthcare software projects', url:'https://www.scitepress.org/PublishedPapers/2013/44341/pdf/index.html', score:1.0, methods:['Focus groups', 'Literature review', 'Divorcing'] },
+          { code:'PS7', title:'Assisting the continuous improvement of scrum projects using metrics and bayesian networks', url:'https://onlinelibrary.wiley.com/doi/epdf/10.1002/smr.1835', score:1.0, methods:['Literature review', 'Delphi method', 'Idioms', 'Top-down approach'] },
+          { code:'PS8', title:'A bayesian networks-based approach to assess and improve the teamwork quality of agile teams', url:'https://www.sciencedirect.com/science/article/abs/pii/S0950584917300204', score:1.0, methods:['Interviews', 'Top-down approach'] },
+          { code:'PS9', title:'A method to build Bayesian networks based on artifacts and metrics to assess agile projects', url:'https://www.ksiresearch.org/seke/seke16paper/seke16paper_213.pdf', score:1.0, methods:['GQM paradigm'] },
+          { code:'PS10', title:'Advanced Bayesian Network for Task Effort Estimation in Agile Software Development', url:'https://www.mdpi.com/2076-3417/13/16/9465', score:1.0, methods:['GQM paradigm', 'D-separation'] },
+          { code:'PS11', title:'Software defects estimation using metrics of early phases of software development life cycle', url:'https://link.springer.com/article/10.1007/s13198-014-0326-2', score:0.5, methods:['Life cycle model (SDLC)'] },
+          { code:'PS12', title:'Predicting the flow of defect correction effort using a Bayesian network model', url:'https://link.springer.com/article/10.1007/s10664-011-9175-7', score:1.0, methods:['GQM paradigm'] },
+          { code:'PS13', title:'Bayesian networks for evidence-based decision-making in software engineering', url:'https://ieeexplore.ieee.org/abstract/document/6808495', score:1.0, methods:['Literature review', 'Idioms', 'Statistical analysis'] },
+          { code:'PS14', title:'Assisting novice software designers by an expert designer agent', url:'https://www.sciencedirect.com/science/article/abs/pii/S0957417407001716', score:1.0, methods:['Literature review'] },
+          { code:'PS15', title:'Constructing a Bayesian Belief Network to predict final quality in embedded system development', url:'https://globals.ieice.org/en_transactions/information/10.1093/ietisy/e88-d.6.1134/_p', score:0.5, methods:['Life cycle model (SDLC)'] },
+          { code:'PS16', title:'An approach to probabilistic effort estimation for military avionics software maintenance by considering structural characteristics', url:'https://ieeexplore.ieee.org/abstract/document/4425881', score:1.0, methods:['Interviews'] },
+          { code:'PS17', title:'Scenario-based assessment of nonfunctional requirements', url:'https://ieeexplore.ieee.org/abstract/document/1438375', score:1.0, methods:['Literature review'] },
+          { code:'PS18', title:'Improving fault prediction using Bayesian networks for the development of embedded software applications', url:'https://onlinelibrary.wiley.com/doi/abs/10.1002/stvr.353', score:1.0, methods:['Interviews'] },
+          { code:'PS19', title:'On the effectiveness of early life cycle defect prediction with Bayesian nets', url:'https://link.springer.com/article/10.1007/s10664-008-9072-x', score:1.0, methods:['Focus groups', 'Literature review', 'Life cycle model (SDLC)'] },
+          { code:'PS21', title:'Making resource decisions for software projects', url:'https://ieeexplore.ieee.org/abstract/document/1317462', score:1.0, methods:['Literature review', 'Life cycle model (SDLC)'] },
+          { code:'PS22', title:'Predicting project velocity in xp using a learning dynamic bayesian network model', url:'https://ieeexplore.ieee.org/abstract/document/4624275', score:1.0, methods:['Life cycle model (SDLC)'] },
+          { code:'PS23', title:'A framework for integrated software quality prediction using bayesian nets', url:'https://link.springer.com/chapter/10.1007/978-3-642-21934-4_26', score:1.0, methods:['Literature review'] },
+          { code:'PS24', title:'Bayesian networks applied to software IV&V', url:'https://ieeexplore.ieee.org/abstract/document/1521218', score:1.0, methods:['Literature review'] },
+          { code:'PS25', title:'Is my software good enough to release? - A probabilistic assessment methodology', url:'https://ieeexplore.ieee.org/abstract/document/1521189', score:1.0, methods:['Literature review'] },
+          { code:'PS27', title:'A probabilistic model for predicting software development effort', url:'https://ieeexplore.ieee.org/abstract/document/1492375', score:1.0, methods:['Literature review'] },
+          { code:'PS28', title:'On the use of Bayesian belief networks for the prediction of software productivity', url:'https://www.sciencedirect.com/science/article/abs/pii/S0950584902001635', score:1.0, methods:['Literature review'] },
+          { code:'PS29', title:'The use of multilegged arguments to increase confidence in safety claims for software-based systems: A study based on a BBN analysis of an idealized example', url:'https://ieeexplore.ieee.org/abstract/document/4160972', score:1.0, methods:['Argumentation model'] },
+          { code:'PS30', title:'Predicting software suitability using a Bayesian belief network', url:'https://ieeexplore.ieee.org/abstract/document/1607435', score:1.0, methods:['Literature review'] },
+          { code:'PS31', title:'A bayesian network approach to assist on the interpretation of software metrics', url:'https://dl.acm.org/doi/abs/10.1145/2695664.2695749', score:1.0, methods:['Idioms'] },
+          { code:'PS32', title:'Predicting software test effort in iterative development using a dynamic Bayesian network', url:'https://www.diva-portal.org/smash/record.jsf?pid=diva2%3A835329&dswid=6444', score:1.0, methods:['Literature review'] },
+          { code:'PS33', title:'Bayesian graphical models for software testing', url:'https://ieeexplore.ieee.org/abstract/document/1000453', score:0.5, methods:['Quality model'] },
+          { code:'PS34', title:'A technique for early prediction of software reliability based on design metrics', url:'https://link.springer.com/article/10.1007/s13198-011-0078-1', score:1.0, methods:['Statistical analysis'] },
+          { code:'PS35', title:'A Probabilistic Approach for Change Impact Prediction in Object-Oriented Systems', url:'https://www.researchgate.net/profile/Hakim-Lounis/publication/220827721_A_Probabilistic_Approach_for_Change_Impact_Prediction_in_Object-Oriented_Systems/links/54638c460cf2837efdb34088/A-Probabilistic-Approach-for-Change-Impact-Prediction-in-Object-Oriented-Systems.pdf', score:1.0, methods:['Literature review'] },
+          { code:'PS36', title:'Using bayesian belief networks to predict change propagation in software systems', url:'https://ieeexplore.ieee.org/abstract/document/4268252', score:1.0, methods:['Software analysis'] },
+          { code:'PS37', title:'Bayesian networks-based risk identification approach for software process risk: the context of Chinese trustworthy software', url:'https://www.worldscientific.com/doi/abs/10.1142/S0219622016500401', score:1.0, methods:['Survey with practitioners', 'Risk-centric modeling'] },
+          { code:'PS38', title:'Toward predicting software development success from the perspective of practitioners: an exploratory Bayesian model', url:'https://journals.sagepub.com/doi/abs/10.1057/palgrave.jit.2000044', score:1.0, methods:['Literature review'] },
+          { code:'PS39', title:'User story estimation based on the complexity decomposition using Bayesian networks', url:'https://link.springer.com/article/10.1134/s0361768820080095', score:1.0, methods:['Literature review'] },
+          { code:'PS40', title:'Effort Prediction in Agile Software Development with Bayesian Networks', url:'https://www.scitepress.org/PublishedPapers/2019/78428/78428.pdf', score:1.0, methods:['Literature review', 'Top-down approach'] },
+          { code:'PS41', title:'Using Bayesian Networks to Support Managing Technological Risk on Software Projects', url:'https://sol.sbc.org.br/index.php/ise/article/view/17277', score:1.0, methods:['Interviews', 'Grounded theory', 'Risk-centric modeling'] },
+          { code:'PS42', title:'A method to estimate software strategic indicators in software development: An industrial application', url:'https://www.sciencedirect.com/science/article/abs/pii/S0950584920301890', score:1.0, methods:['Focus groups', 'Literature review', 'Quality model'] },
+          { code:'PS43', title:'Bayesian Analysis in Predicting the Success Rate of the Scrum-Based Software Development Project Under Stochastic Environment', url:'https://pradana.io/wp-content/uploads/2025/08/Bayesian-Analysis-in-Predicting-the-Success-Rate-of-the-Scrum-based-Software-Development-Project-under-Stochastic-Environment_watermark.pdf', score:1.0, methods:['Literature review'] },
+          { code:'PS44', title:'Requirement Change Prediction Model for Small Software Systems', url:'https://www.mdpi.com/2073-431X/12/8/164', score:1.0, methods:['Literature review'] },
+          { code:'PS45', title:'A Bayesian critical path method for managing common risks in software project scheduling', url:'https://dl.acm.org/doi/abs/10.1145/3287921.3287962', score:1.0, methods:['Literature review', 'Risk-centric modeling'] },
+          { code:'PS46', title:'Analysing and modelling runtime architectural stability for self-adaptive software', url:'https://www.sciencedirect.com/science/article/pii/S0164121217301620?casa_token=hlbsfc1mR9gAAAAA:I0X0AITN3ibsGDt7Lfzzh1051lIr_tNZ7mMqWUVhbFcFV7mImTUI7hzirbim_GgTijUahvqs7w', score:1.0, methods:['Literature review'] },
+          { code:'PS47', title:'A Bayesian networks-based method to analyze the validity of the data of software measurement programs', url:'https://ieeexplore.ieee.org/abstract/document/9246551', score:1.0, methods:['Interviews', 'Focus groups', 'Idioms', 'GQM paradigm'] },
+          { code:'PS48', title:'Modeling web quality using a probabilistic approach: An empirical validation', url:'https://dl.acm.org/doi/abs/10.1145/1806916.1806918', score:1.0, methods:['Literature review', 'Idioms', 'GQM paradigm', 'Divorcing'] },
+          { code:'PS49', title:'A multi-criteria distribution model for global software development projects', url:'https://link.springer.com/article/10.1007/s13173-010-0010-6', score:1.0, methods:['Literature review', 'Divorcing'] },
+          { code:'PS50', title:'A prioritization approach for software test cases based on bayesian networks', url:'https://link.springer.com/chapter/10.1007/978-3-540-71289-3_22', score:1.0, methods:['Quality model'] },
+          { code:'PS51', title:'Test case prioritisation during web application testing', url:'https://www.inderscienceonline.com/doi/abs/10.1504/IJCAT.2017.088200', score:1.0, methods:['Literature review'] },
+          { code:'PS52', title:'Probabilistic risk assessment for security requirements: A preliminary study', url:'https://ieeexplore.ieee.org/abstract/document/5991999', score:1.0, methods:['Literature review', 'Idioms', 'Risk-centric modeling'] },
+          { code:'PS53', title:'V&V-based remaining fault estimation model for safety–critical software of a nuclear power plant', url:'https://www.sciencedirect.com/science/article/pii/S0306454912003039', score:1.0, methods:['Literature review', 'Life cycle model (SDLC)', 'D-separation'] },
+          { code:'PS54', title:'A bayesian belief network based model for predicting software faults in early phase of software development process', url:'https://link.springer.com/article/10.1007/s10489-017-1078-x', score:0.5, methods:['Life cycle model (SDLC)'] },
+          { code:'PS55', title:'Maintenance process modeling and dynamic estimations based on Bayesian networks and association rules', url:'https://onlinelibrary.wiley.com/doi/full/10.1002/smr.2163', score:1.0, methods:['Literature review'] },
+          { code:'PS56', title:'Development of a Bayesian belief network model for software reliability quantification of digital protection systems in nuclear power plants', url:'https://www.sciencedirect.com/science/article/pii/S0306454918302299', score:1.0, methods:['Literature review', 'Life cycle model (SDLC)'] },
+          { code:'PS57', title:'Data-driven risk management for requirements engineering: An automated approach based on Bayesian networks', url:'https://ieeexplore.ieee.org/abstract/document/9218189', score:1.0, methods:['Survey with practitioners', 'Grounded theory'] },
+          { code:'PS58', title:'Supporting defect causal analysis in practice with cross-company data on causes of requirements engineering problems', url:'https://ieeexplore.ieee.org/abstract/document/7965446', score:1.0, methods:['Survey with practitioners', 'Literature review', 'Grounded theory', 'Risk-centric modeling'] },
+          { code:'PS59', title:'Intelligent analysis model for outsourced software project risk using constraint-based Bayesian Network', url:'https://www.researchgate.net/profile/Xiangzhou-Zhang-2/publication/265053365_Intelligent_Analysis_Model_for_Outsourced_Software_Project_Risk_Using_Constraint-based_Bayesian_Network/links/55f6527a08ae6a34f6633272/Intelligent-Analysis-Model-for-Outsourced-Software-Project-Risk-Using-Constraint-based-Bayesian-Network.pdf', score:1.0, methods:['Interviews', 'Survey with practitioners', 'Risk-centric modeling', 'Cheng\'s algorithm'] },
+          { code:'PS60', title:'Software project risk analysis using Bayesian networks with causality constraints', url:'https://www.sciencedirect.com/science/article/pii/S0167923612003338', score:1.0, methods:['Survey with practitioners', 'Risk-centric modeling', 'Cheng\'s algorithm', 'V-structure discovery algorithm'] },
+          { code:'PS61', title:'Bayesian belief networks as a software productivity estimation tool', url:'https://d1wqtxts1xzle7.cloudfront.net/30803925/10.1.1.108.7639-libre.pdf?1363398575=&response-content-disposition=inline%3B+filename%3DBayesian_belief_networks_as_a_software_p.pdf&Expires=1775698871&Signature=ABlMOEIOGDeTFRzyKu4T1k9JdXlPkX2hlt76o2CW2S61sFDGK0FeUEQxLJxKLSV4hjUwNfJyZjzGcFACE~wgwNfomfLt8nTdxV0mYBj0QxORIvjhmyR4nw3g1tNa6W4FxXpGuWNM0ShfpbakhwU4NpBeE3LHKdiykaYlKCEaYVmbJXU26TgxQj9vTBZA1j4sp6h8W0DLjKVBdfAHw-KL-Cfmp3tiI1PM8w2OxhYQUX3oNzK-UqIWb~6NClrzX6SKlLrlxHxTclI9NRQS17K1wnmzCdQhR5~ZC5ED2EdyYzL~h4FmFYZ2~fsNGdtO~ebrhPUNRVrrHFndaZ3K5nnQ-g__&Key-Pair-Id=APKAJLOHF5GGSLRBV4ZA', score:1.0, methods:['K2 algorithm'] },
+          { code:'PS62', title:'A Bayesian belief network cost estimation model that incorporates cultural and project leadership factors', url:'https://ieeexplore.ieee.org/abstract/document/5356306', score:0.5, methods:['Survey with practitioners', 'Learning from data using an automated tool'] },
+          { code:'PS63', title:'The use of a bayesian network for web effort estimation', url:'https://link.springer.com/chapter/10.1007/978-3-540-73597-7_8', score:1.0, methods:['NPC algorithm'] },
+          { code:'PS64', title:'Software project schedule variance prediction using Bayesian Network', url:'https://ieeexplore.ieee.org/abstract/document/5552847/', score:1.0, methods:['K2 algorithm'] },
+          { code:'PS65', title:'Probabilistic and analytical estimation of software development team size', url:'https://journals.sagepub.com/doi/abs/10.3233/HIS-2010-0110', score:0.5, methods:['Learning from data using an automated tool'] },
+          { code:'PS66', title:'Multi-step generation of bayesian networks models for software projects estimations', url:'https://link.springer.com/article/10.1080/18756891.2013.805583', score:0.5, methods:['Learning from data using an automated tool'] }
+        ]
+      },
+      {
+        name: '1.4. Structure evaluation',
+        methods: ['Interviews', 'Focus groups', 'Survey with practitioners', 'Statistical analysis', 'Simulated association rules', 'Expert review'],
+        studies: [
+          { code:'PS3', title:'Towards improving decision making and estimating the value of decisions in value-based software engineering: the VALUE framework', url:'https://link.springer.com/article/10.1007/s11219-017-9360-z', score:1.0, methods:['Focus groups'] },
+          { code:'PS4', title:'Using knowledge elicitation to improve Web effort estimation: Lessons from six industrial case studies', url:'https://ieeexplore.ieee.org/abstract/document/6227108', score:1.0, methods:['Focus groups'] },
+          { code:'PS5', title:'An expert-based requirements effort estimation model using bayesian networks', url:'https://link.springer.com/chapter/10.1007/978-3-319-27033-3_6', score:1.0, methods:['Focus groups'] },
+          { code:'PS6', title:'Using expert-based bayesian networks as decision support systems to improve project management of healthcare software projects', url:'https://www.scitepress.org/PublishedPapers/2013/44341/pdf/index.html', score:1.0, methods:['Focus groups'] },
+          { code:'PS7', title:'Assisting the continuous improvement of scrum projects using metrics and bayesian networks', url:'https://onlinelibrary.wiley.com/doi/epdf/10.1002/smr.1835', score:1.0, methods:['Expert review'] },
+          { code:'PS13', title:'Bayesian networks for evidence-based decision-making in software engineering', url:'https://ieeexplore.ieee.org/abstract/document/6808495', score:1.0, methods:['Expert review'] },
+          { code:'PS17', title:'Scenario-based assessment of nonfunctional requirements', url:'https://ieeexplore.ieee.org/abstract/document/1438375', score:1.0, methods:['Simulated association rules'] },
+          { code:'PS18', title:'Improving fault prediction using Bayesian networks for the development of embedded software applications', url:'https://onlinelibrary.wiley.com/doi/abs/10.1002/stvr.353', score:1.0, methods:['Expert review'] },
+          { code:'PS24', title:'Bayesian networks applied to software IV&V', url:'https://ieeexplore.ieee.org/abstract/document/1521218', score:0.5, methods:['Expert review'] },
+          { code:'PS27', title:'A probabilistic model for predicting software development effort', url:'https://ieeexplore.ieee.org/abstract/document/1492375', score:1.0, methods:['Statistical analysis'] },
+          { code:'PS31', title:'A bayesian network approach to assist on the interpretation of software metrics', url:'https://dl.acm.org/doi/abs/10.1145/2695664.2695749', score:1.0, methods:['Expert review'] },
+          { code:'PS38', title:'Toward predicting software development success from the perspective of practitioners: an exploratory Bayesian model', url:'https://journals.sagepub.com/doi/abs/10.1057/palgrave.jit.2000044', score:1.0, methods:['Statistical analysis', 'Survey with practitioners'] },
+          { code:'PS39', title:'User story estimation based on the complexity decomposition using Bayesian networks', url:'https://link.springer.com/article/10.1134/s0361768820080095', score:1.0, methods:['Survey with practitioners'] },
+          { code:'PS44', title:'Requirement Change Prediction Model for Small Software Systems', url:'https://www.mdpi.com/2073-431X/12/8/164', score:1.0, methods:['Statistical analysis', 'Survey with practitioners'] },
+          { code:'PS47', title:'A Bayesian networks-based method to analyze the validity of the data of software measurement programs', url:'https://ieeexplore.ieee.org/abstract/document/9246551', score:1.0, methods:['Expert review'] },
+          { code:'PS49', title:'A multi-criteria distribution model for global software development projects', url:'https://link.springer.com/article/10.1007/s13173-010-0010-6', score:1.0, methods:['Interviews'] },
+          { code:'PS52', title:'Probabilistic risk assessment for security requirements: A preliminary study', url:'https://ieeexplore.ieee.org/abstract/document/5991999', score:0.5, methods:['Expert review'] },
+          { code:'PS56', title:'Development of a Bayesian belief network model for software reliability quantification of digital protection systems in nuclear power plants', url:'https://www.sciencedirect.com/science/article/pii/S0306454918302299', score:1.0, methods:['Survey with practitioners'] },
+          { code:'PS59', title:'Intelligent analysis model for outsourced software project risk using constraint-based Bayesian Network', url:'https://www.researchgate.net/profile/Xiangzhou-Zhang-2/publication/265053365_Intelligent_Analysis_Model_for_Outsourced_Software_Project_Risk_Using_Constraint-based_Bayesian_Network/links/55f6527a08ae6a34f6633272/Intelligent-Analysis-Model-for-Outsourced-Software-Project-Risk-Using-Constraint-based-Bayesian-Network.pdf', score:0.5, methods:['Expert review'] },
+          { code:'PS61', title:'Bayesian belief networks as a software productivity estimation tool', url:'https://d1wqtxts1xzle7.cloudfront.net/30803925/10.1.1.108.7639-libre.pdf?1363398575=&response-content-disposition=inline%3B+filename%3DBayesian_belief_networks_as_a_software_p.pdf&Expires=1775698871&Signature=ABlMOEIOGDeTFRzyKu4T1k9JdXlPkX2hlt76o2CW2S61sFDGK0FeUEQxLJxKLSV4hjUwNfJyZjzGcFACE~wgwNfomfLt8nTdxV0mYBj0QxORIvjhmyR4nw3g1tNa6W4FxXpGuWNM0ShfpbakhwU4NpBeE3LHKdiykaYlKCEaYVmbJXU26TgxQj9vTBZA1j4sp6h8W0DLjKVBdfAHw-KL-Cfmp3tiI1PM8w2OxhYQUX3oNzK-UqIWb~6NClrzX6SKlLrlxHxTclI9NRQS17K1wnmzCdQhR5~ZC5ED2EdyYzL~h4FmFYZ2~fsNGdtO~ebrhPUNRVrrHFndaZ3K5nnQ-g__&Key-Pair-Id=APKAJLOHF5GGSLRBV4ZA', score:0.5, methods:['Expert review'] },
+          { code:'PS63', title:'The use of a bayesian network for web effort estimation', url:'https://link.springer.com/chapter/10.1007/978-3-540-73597-7_8', score:1.0, methods:['Expert review', 'Statistical analysis'] },
+          { code:'PS66', title:'Multi-step generation of bayesian networks models for software projects estimations', url:'https://link.springer.com/article/10.1080/18756891.2013.805583', score:0.5, methods:['Expert-derived categories/thresholds', 'Automatic discretization'] }
+        ]
+      }
+    ]
+  },
+  {
+    phase: '2. Parameter Estimation',
+    info: 'This phase focuses on defining the BN parameters by estimating the conditional probabilities that quantify the relationships between variables.',
+    exemplarReferences: [
+        'Emilia Mendes, Pilar Rodriguez, Vitor Freitas, Simon Baker, and Mohamed Amine Atoui. 2018. Towards improving decision making and estimating the value of decisions in value-based software engineering: the VALUE framework. <i>Software Quality Journal</i>. 26, 2 (2018), 607–656.',
+        'Mirko Perkusich, Kyller Costa Gorgônio, Hyggo Almeida, and Angelo Perkusich. 2017. Assisting the continuous improvement of Scrum projects using metrics and Bayesian networks. <i>Journal of Software: Evolution and Process</i>. 29, 6 (2017), e1835.',
+        'Martí Manzano, Claudia Ayala, Cristina Gómez, Antonin Abherve, Xavier Franch, and Emilia Mendes. 2021. A method to estimate software strategic indicators in software development: an industrial application. <i>Information and Software Technology</i>. 129 (2021), 106433.'
+    ],
+    activities: [
+      {
+        name: '2.1. CPT construction',
+        methods: ['Interviews','Focus groups','Literature review','Survey with practitioners','Analytic Hierarchy Process (AHP)', 'Theoretical modeling', 'Frequency quantification from historical/empirical data', 'Frequency estimation from simulated data', 'Noisy-OR gates', 'Direct functions', 'Expert-derived functions', 'Ranked nodes method', 'Partitioned expressions', 'Weighted Sum Algorithm (WSA)', 'Distribution fitting', 'Probability extrapolation', 'Parametric learning', 'Fuzzy logic', 'Quantifying Judgment (QJ) method', 'Generalized Linear Model (GLM)', 'Expectation-Maximization (EM) algorithm', 'Maximum Likelihood Estimation (MLE) algorithm', 'Learning from data using an automated tool'],
+        studies: [
+          { code:'PS1',  title:'A process to calculate the uncertainty of software metrics-based models using Bayesian networks',  url:'https://ksiresearchorg.ipage.com/seke/seke17paper/seke17paper_172.pdf', score:1.0, methods:['Ranked nodes method'] },
+          { code:'PS2', title:'An influence diagram approach to automating lead time estimation in Agile Kanban project management', url:'https://www.sciencedirect.com/science/article/abs/pii/S0957417421012252', score:1.0, methods:['Frequency quantification from historical/empirical data', 'Direct functions'] },
+          { code:'PS3', title:'Towards improving decision making and estimating the value of decisions in value-based software engineering: the VALUE framework', url:'https://link.springer.com/article/10.1007/s11219-017-9360-z', score:1.0, methods:['Frequency quantification from historical/empirical data', 'Focus groups', 'Weighted Sum Algorithm (WSA)'] },
+          { code:'PS7', title:'Assisting the continuous improvement of scrum projects using metrics and bayesian networks', url:'https://onlinelibrary.wiley.com/doi/epdf/10.1002/smr.1835', score:1.0, methods:['Ranked nodes method'] },
+          { code:'PS8', title:'A bayesian networks-based approach to assess and improve the teamwork quality of agile teams', url:'https://www.sciencedirect.com/science/article/abs/pii/S0950584917300204', score:1.0, methods:['Interviews', 'Ranked nodes method'] },
+          { code:'PS9', title:'A method to build Bayesian networks based on artifacts and metrics to assess agile projects', url:'https://www.ksiresearch.org/seke/seke16paper/seke16paper_213.pdf', score:0.5, methods:['Survey with practitioners', 'Ranked nodes method'] },
+          { code:'PS12', title:'Predicting the flow of defect correction effort using a Bayesian network model', url:'https://link.springer.com/article/10.1007/s10664-011-9175-7', score:0.5, methods:['Ranked nodes method', 'Partitioned expressions', 'Learning from data using an automated tool'] },
+          { code:'PS13', title:'Bayesian networks for evidence-based decision-making in software engineering', url:'https://ieeexplore.ieee.org/abstract/document/6808495', score:1.0, methods:['Interviews', 'Survey with practitioners', 'Distribution fitting'] },
+          { code:'PS14', title:'Assisting novice software designers by an expert designer agent', url:'https://www.sciencedirect.com/science/article/abs/pii/S0957417407001716', score:1.0, methods:['Parametric learning'] },
+          { code:'PS17', title:'Scenario-based assessment of nonfunctional requirements', url:'https://ieeexplore.ieee.org/abstract/document/1438375', score:0.5, methods:['Literature review'] },
+          { code:'PS19', title:'On the effectiveness of early life cycle defect prediction with Bayesian nets', url:'https://link.springer.com/article/10.1007/s10664-008-9072-x', score:1.0, methods:['Ranked nodes method', 'Partitioned expressions'] },
+          { code:'PS20', title:'Probabilistic modelling for software quality control', url:'https://www.tandfonline.com/doi/abs/10.3166/jancl.12.173-188', score:1.0, methods:['Frequency quantification from historical/empirical data', 'Probability extrapolation'] },
+          { code:'PS21', title:'Making resource decisions for software projects', url:'https://ieeexplore.ieee.org/abstract/document/1317462', score:0.5, methods:['Literature review', 'Distribution fitting', 'Direct functions'] },
+          { code:'PS22', title:'Predicting project velocity in xp using a learning dynamic bayesian network model', url:'https://ieeexplore.ieee.org/abstract/document/4624275', score:1.0, methods:['Ranked nodes method', 'Literature review', 'Distribution fitting'] },
+          { code:'PS23', title:'A framework for integrated software quality prediction using bayesian nets', url:'https://link.springer.com/chapter/10.1007/978-3-642-21934-4_26', score:1.0, methods:['Ranked nodes method'] },
+          { code:'PS24', title:'Bayesian networks applied to software IV&V', url:'https://ieeexplore.ieee.org/abstract/document/1521218', score:1.0, methods:['Frequency quantification from historical/empirical data', 'Quantifying Judgment (QJ) method'] },
+          { code:'PS25', title:'Is my software good enough to release? - A probabilistic assessment methodology', url:'https://ieeexplore.ieee.org/abstract/document/1521189', score:1.0, methods:['Survey with practitioners', 'Quantifying Judgment (QJ) method'] },
+          { code:'PS26', title:'Bayesian networks modeling for software inspection effectiveness', url:'https://ieeexplore.ieee.org/abstract/document/1607500', score:1.0, methods:['Distribution fitting', 'Analytic Hierarchy Process (AHP)'] },
+          { code:'PS29', title:'The use of multilegged arguments to increase confidence in safety claims for software-based systems: A study based on a BBN analysis of an idealized example', url:'https://ieeexplore.ieee.org/abstract/document/4160972', score:1.0, methods:['Theoretical modeling', 'Distribution fitting', 'Direct functions'] },
+          { code:'PS31', title:'A bayesian network approach to assist on the interpretation of software metrics', url:'https://dl.acm.org/doi/abs/10.1145/2695664.2695749', score:1.0, methods:['Survey with practitioners', 'Ranked nodes method'] },
+          { code:'PS33', title:'Bayesian graphical models for software testing', url:'https://ieeexplore.ieee.org/abstract/document/1000453', score:1.0, methods:['Distribution fitting', 'Noisy-OR gates'] },
+          { code:'PS34', title:'A technique for early prediction of software reliability based on design metrics', url:'https://link.springer.com/article/10.1007/s13198-011-0078-1', score:1.0, methods:['Generalized Linear Model (GLM)', 'Maximum Likelihood Estimation (MLE) algorithm', 'Direct functions'] },
+          { code:'PS35', title:'A Probabilistic Approach for Change Impact Prediction in Object-Oriented Systems', url:'https://www.researchgate.net/profile/Hakim-Lounis/publication/220827721_A_Probabilistic_Approach_for_Change_Impact_Prediction_in_Object-Oriented_Systems/links/54638c460cf2837efdb34088/A-Probabilistic-Approach-for-Change-Impact-Prediction-in-Object-Oriented-Systems.pdf', score:0.5, methods:['Fuzzy logic', 'Literature review'] },
+          { code:'PS36', title:'Using bayesian belief networks to predict change propagation in software systems', url:'https://ieeexplore.ieee.org/abstract/document/4268252', score:0.5, methods:['Direct functions', 'Noisy-OR gates', 'Expectation-Maximization (EM) algorithm'] },
+          { code:'PS37', title:'Bayesian networks-based risk identification approach for software process risk: the context of Chinese trustworthy software', url:'https://www.worldscientific.com/doi/abs/10.1142/S0219622016500401', score:1.0, methods:['Survey with practitioners', 'Expectation-Maximization (EM) algorithm'] },
+          { code:'PS38', title:'Toward predicting software development success from the perspective of practitioners: an exploratory Bayesian model', url:'https://journals.sagepub.com/doi/abs/10.1057/palgrave.jit.2000044', score:1.0, methods:['Survey with practitioners', 'Frequency quantification from historical/empirical data'] },
+          { code:'PS39', title:'User story estimation based on the complexity decomposition using Bayesian networks', url:'https://link.springer.com/article/10.1134/s0361768820080095', score:0.5, methods:['Survey with practitioners', 'Direct functions'] },
+          { code:'PS40', title:'Effort Prediction in Agile Software Development with Bayesian Networks', url:'https://www.scitepress.org/PublishedPapers/2019/78428/78428.pdf', score:0.5, methods:['Ranked nodes method'] },
+          { code:'PS42', title:'A method to estimate software strategic indicators in software development: An industrial application', url:'https://www.sciencedirect.com/science/article/abs/pii/S0950584920301890', score:1.0, methods:['Frequency quantification from historical/empirical data', 'Weighted Sum Algorithm (WSA)'] },
+          { code:'PS44', title:'Requirement Change Prediction Model for Small Software Systems', url:'https://www.mdpi.com/2073-431X/12/8/164', score:1.0, methods:['Survey with practitioners', 'Frequency quantification from historical/empirical data', 'Learning from data using an automated tool'] },
+          { code:'PS46', title:'Analysing and modelling runtime architectural stability for self-adaptive software', url:'https://www.sciencedirect.com/science/article/pii/S0164121217301620?casa_token=hlbsfc1mR9gAAAAA:I0X0AITN3ibsGDt7Lfzzh1051lIr_tNZ7mMqWUVhbFcFV7mImTUI7hzirbim_GgTijUahvqs7w', score:0.5, methods:['Frequency estimation from simulated data'] },
+          { code:'PS47', title:'A Bayesian networks-based method to analyze the validity of the data of software measurement programs', url:'https://ieeexplore.ieee.org/abstract/document/9246551', score:1.0, methods:['Partitioned expressions', 'Ranked nodes method', 'Survey with practitioners'] },
+          { code:'PS48', title:'Modeling web quality using a probabilistic approach: An empirical validation', url:'https://dl.acm.org/doi/abs/10.1145/1806916.1806918', score:1.0, methods:['Frequency quantification from historical/empirical data', 'Fuzzy logic', 'Literature review', 'Focus groups', 'Expert-derived functions'] },
+          { code:'PS50', title:'A prioritization approach for software test cases based on bayesian networks', url:'https://link.springer.com/chapter/10.1007/978-3-540-71289-3_22', score:0.5, methods:['Direct functions', 'Noisy-OR gates'] },
+          { code:'PS52', title:'Probabilistic risk assessment for security requirements: A preliminary study', url:'https://ieeexplore.ieee.org/abstract/document/5991999', score:0.5, methods:['Frequency quantification from historical/empirical data'] },
+          { code:'PS53', title:'V&V-based remaining fault estimation model for safety–critical software of a nuclear power plant', url:'https://www.sciencedirect.com/science/article/pii/S0306454912003039', score:1.0, methods:['Ranked nodes method', 'Direct functions'] },
+          { code:'PS54', title:'A bayesian belief network based model for predicting software faults in early phase of software development process', url:'https://link.springer.com/article/10.1007/s10489-017-1078-x', score:1.0, methods:['Fuzzy logic'] },
+          { code:'PS56', title:'Development of a Bayesian belief network model for software reliability quantification of digital protection systems in nuclear power plants', url:'https://www.sciencedirect.com/science/article/pii/S0306454918302299', score:0.5, methods:['Survey with practitioners', 'Literature review'] },
+          { code:'PS58', title:'Supporting defect causal analysis in practice with cross-company data on causes of requirements engineering problems', url:'https://ieeexplore.ieee.org/abstract/document/7965446', score:1.0, methods:['Survey with practitioners', 'Expectation-Maximization (EM) algorithm'] },
+          { code:'PS63', title:'The use of a bayesian network for web effort estimation', url:'https://link.springer.com/chapter/10.1007/978-3-540-73597-7_8', score:0.5, methods:['Expectation-Maximization (EM) algorithm'] }
+        ]
+      },
+      {
+        name: '2.2. CPT evaluation',
+        methods: ['Expert review','Focus groups', 'Brier score', 'Simulated relevance analysis'],
+        studies: [
+          { code:'PS2', title:'An influence diagram approach to automating lead time estimation in Agile Kanban project management', url:'https://www.sciencedirect.com/science/article/abs/pii/S0957417421012252', score:0.5, methods:['Expert review'] },
+          { code:'PS3', title:'Towards improving decision making and estimating the value of decisions in value-based software engineering: the VALUE framework', url:'https://link.springer.com/article/10.1007/s11219-017-9360-z', score:1.0, methods:['Focus groups'] },
+          { code:'PS7', title:'Assisting the continuous improvement of scrum projects using metrics and bayesian networks', url:'https://onlinelibrary.wiley.com/doi/epdf/10.1002/smr.1835', score:1.0, methods:['Brier score'] },
+          { code:'PS12', title:'Predicting the flow of defect correction effort using a Bayesian network model', url:'https://link.springer.com/article/10.1007/s10664-011-9175-7', score:0.5, methods:['Expert review'] },
+          { code:'PS17', title:'Scenario-based assessment of nonfunctional requirements', url:'https://ieeexplore.ieee.org/abstract/document/1438375', score:1.0, methods:['Simulated relevance analysis'] },
+          { code:'PS20', title:'Probabilistic modelling for software quality control', url:'https://www.tandfonline.com/doi/abs/10.3166/jancl.12.173-188', score:0.5, methods:['Expert review'] },
+          { code:'PS21', title:'Making resource decisions for software projects', url:'https://ieeexplore.ieee.org/abstract/document/1317462', score:0.5, methods:['Expert review'] },
+          { code:'PS33', title:'Bayesian graphical models for software testing', url:'https://ieeexplore.ieee.org/abstract/document/1000453', score:0.5, methods:['Expert review'] },
+          { code:'PS42', title:'A method to estimate software strategic indicators in software development: An industrial application', url:'https://www.sciencedirect.com/science/article/abs/pii/S0950584920301890', score:1.0, methods:['Expert review'] },
+          { code:'PS47', title:'A Bayesian networks-based method to analyze the validity of the data of software measurement programs', url:'https://ieeexplore.ieee.org/abstract/document/9246551', score:0.5, methods:['Expert review'] },
+          { code:'PS63', title:'The use of a bayesian network for web effort estimation', url:'https://link.springer.com/chapter/10.1007/978-3-540-73597-7_8', score:0.5, methods:['Expert review'] }
+        ]
+      }
+    ]
+  },
+  {
+    phase: '3. Model Validation',
+    info: 'This phase focuses on validating the model to ensure it is accurate, consistent, and suitable for its intended use.',
+    exemplarReferences: [
+        'Emilia Mendes, Pilar Rodriguez, Vitor Freitas, Simon Baker, and Mohamed Amine Atoui. 2018. Towards improving decision making and estimating the value of decisions in value-based software engineering: the VALUE framework. <i>Software Quality Journal</i>. 26, 2 (2018), 607–656.',
+        'Emilia Mendes. 2012. Using knowledge elicitation to improve Web effort estimation: Lessons from six industrial case studies. In <i>Proceedings of the 34th International Conference on Software Engineering (ICSE)</i>. IEEE, 1112–1121.',
+        'Mirko Perkusich, Kyller Costa Gorgônio, Hyggo Almeida, and Angelo Perkusich. 2017. Assisting the continuous improvement of Scrum projects using metrics and Bayesian networks. <i>Journal of Software: Evolution and Process</i>. 29, 6 (2017), e1835.',
+        'Mili Turić, Stipe Čelar, Srdjana Dragičević, and Linda Vicković. 2023. Advanced Bayesian network for task effort estimation in agile software development. <i>Applied Sciences</i>. 13, 16 (2023), 9465.',
+        'Norman Fenton, Martin Neil, William Marsh, Peter Hearty, Łukasz Radliński, and Paul Krause. 2008. On the effectiveness of early life cycle defect prediction with Bayesian nets. <i>Empirical Software Engineering</i>. 13, 5 (2008), 499–537.'
+    ],
+    activities: [
+      {
+        name: '3.1. Expert-based validation',
+        methods: ['Model walkthrough', 'Sensitivity analysis', 'Focus groups', 'Case study', 'Proof of concept'],
+        studies: [
+          { code:'PS1',  title:'A process to calculate the uncertainty of software metrics-based models using Bayesian networks',  url:'https://ksiresearchorg.ipage.com/seke/seke17paper/seke17paper_172.pdf', score:1.0, methods:['Model walkthrough'] },
+          { code:'PS2', title:'An influence diagram approach to automating lead time estimation in Agile Kanban project management', url:'https://www.sciencedirect.com/science/article/abs/pii/S0957417421012252', score:0.5, methods:['Sensitivity analysis', 'Proof of concept'] },
+          { code:'PS3', title:'Towards improving decision making and estimating the value of decisions in value-based software engineering: the VALUE framework', url:'https://link.springer.com/article/10.1007/s11219-017-9360-z', score:1.0, methods:['Model walkthrough'] },
+          { code:'PS4', title:'Using knowledge elicitation to improve Web effort estimation: Lessons from six industrial case studies', url:'https://ieeexplore.ieee.org/abstract/document/6227108', score:1.0, methods:['Model walkthrough'] },
+          { code:'PS6', title:'Using expert-based bayesian networks as decision support systems to improve project management of healthcare software projects', url:'https://www.scitepress.org/PublishedPapers/2013/44341/pdf/index.html', score:1.0, methods:['Model walkthrough'] },
+          { code:'PS7', title:'Assisting the continuous improvement of scrum projects using metrics and bayesian networks', url:'https://onlinelibrary.wiley.com/doi/epdf/10.1002/smr.1835', score:1.0, methods:['Model walkthrough'] },
+          { code:'PS8', title:'A bayesian networks-based approach to assess and improve the teamwork quality of agile teams', url:'https://www.sciencedirect.com/science/article/abs/pii/S0950584917300204', score:1.0, methods:['Case study'] },
+          { code:'PS9', title:'A method to build Bayesian networks based on artifacts and metrics to assess agile projects', url:'https://www.ksiresearch.org/seke/seke16paper/seke16paper_213.pdf', score:1.0, methods:['Model walkthrough'] },
+          { code:'PS12', title:'Predicting the flow of defect correction effort using a Bayesian network model', url:'https://link.springer.com/article/10.1007/s10664-011-9175-7', score:1.0, methods:['Model walkthrough', 'Sensitivity analysis'] },
+          { code:'PS14', title:'Assisting novice software designers by an expert designer agent', url:'https://www.sciencedirect.com/science/article/abs/pii/S0957417407001716', score:1.0, methods:['Model walkthrough'] },
+          { code:'PS19', title:'On the effectiveness of early life cycle defect prediction with Bayesian nets', url:'https://link.springer.com/article/10.1007/s10664-008-9072-x', score:1.0, methods:['Sensitivity analysis', 'Proof of concept'] },
+          { code:'PS20', title:'Probabilistic modelling for software quality control', url:'https://www.tandfonline.com/doi/abs/10.3166/jancl.12.173-188', score:1.0, methods:['Model walkthrough'] },
+          { code:'PS21', title:'Making resource decisions for software projects', url:'https://ieeexplore.ieee.org/abstract/document/1317462', score:0.5, methods:['Proof of concept'] },
+          { code:'PS23', title:'A framework for integrated software quality prediction using bayesian nets', url:'https://link.springer.com/chapter/10.1007/978-3-642-21934-4_26', score:0.5, methods:['Proof of concept'] },
+          { code:'PS24', title:'Bayesian networks applied to software IV&V', url:'https://ieeexplore.ieee.org/abstract/document/1521218', score:0.5, methods:['Proof of concept'] },
+          { code:'PS25', title:'Is my software good enough to release? - A probabilistic assessment methodology', url:'https://ieeexplore.ieee.org/abstract/document/1521189', score:1.0, methods:['Case study'] },
+          { code:'PS26', title:'Bayesian networks modeling for software inspection effectiveness', url:'https://ieeexplore.ieee.org/abstract/document/1607500', score:1.0, methods:['Sensitivity analysis'] },
+          { code:'PS29', title:'The use of multilegged arguments to increase confidence in safety claims for software-based systems: A study based on a BBN analysis of an idealized example', url:'https://ieeexplore.ieee.org/abstract/document/4160972', score:0.5, methods:['Proof of concept'] },
+          { code:'PS31', title:'A bayesian network approach to assist on the interpretation of software metrics', url:'https://dl.acm.org/doi/abs/10.1145/2695664.2695749', score:1.0, methods:['Case study'] },
+          { code:'PS32', title:'Predicting software test effort in iterative development using a dynamic Bayesian network', url:'https://www.diva-portal.org/smash/record.jsf?pid=diva2%3A835329&dswid=6444', score:1.0, methods:['Model walkthrough'] },
+          { code:'PS33', title:'Bayesian graphical models for software testing', url:'https://ieeexplore.ieee.org/abstract/document/1000453', score:0.5, methods:['Proof of concept'] },
+          { code:'PS35', title:'A Probabilistic Approach for Change Impact Prediction in Object-Oriented Systems', url:'https://www.researchgate.net/profile/Hakim-Lounis/publication/220827721_A_Probabilistic_Approach_for_Change_Impact_Prediction_in_Object-Oriented_Systems/links/54638c460cf2837efdb34088/A-Probabilistic-Approach-for-Change-Impact-Prediction-in-Object-Oriented-Systems.pdf', score:0.5, methods:['Proof of concept'] },
+          { code:'PS37', title:'Bayesian networks-based risk identification approach for software process risk: the context of Chinese trustworthy software', url:'https://www.worldscientific.com/doi/abs/10.1142/S0219622016500401', score:0.5, methods:['Proof of concept'] },
+          { code:'PS40', title:'Effort Prediction in Agile Software Development with Bayesian Networks', url:'https://www.scitepress.org/PublishedPapers/2019/78428/78428.pdf', score:1.0, methods:['Model walkthrough'] },
+          { code:'PS41', title:'Using Bayesian Networks to Support Managing Technological Risk on Software Projects', url:'https://sol.sbc.org.br/index.php/ise/article/view/17277', score:1.0, methods:['Model walkthrough', 'Focus groups'] },
+          { code:'PS42', title:'A method to estimate software strategic indicators in software development: An industrial application', url:'https://www.sciencedirect.com/science/article/abs/pii/S0950584920301890', score:1.0, methods:['Model walkthrough'] },
+          { code:'PS43', title:'Bayesian Analysis in Predicting the Success Rate of the Scrum-Based Software Development Project Under Stochastic Environment', url:'https://pradana.io/wp-content/uploads/2025/08/Bayesian-Analysis-in-Predicting-the-Success-Rate-of-the-Scrum-based-Software-Development-Project-under-Stochastic-Environment_watermark.pdf', score:1.0, methods:['Model walkthrough'] },
+          { code:'PS44', title:'Requirement Change Prediction Model for Small Software Systems', url:'https://www.mdpi.com/2073-431X/12/8/164', score:1.0, methods:['Sensitivity analysis'] },
+          { code:'PS46', title:'Analysing and modelling runtime architectural stability for self-adaptive software', url:'https://www.sciencedirect.com/science/article/pii/S0164121217301620?casa_token=hlbsfc1mR9gAAAAA:I0X0AITN3ibsGDt7Lfzzh1051lIr_tNZ7mMqWUVhbFcFV7mImTUI7hzirbim_GgTijUahvqs7w', score:1.0, methods:['Case study'] },
+          { code:'PS47', title:'A Bayesian networks-based method to analyze the validity of the data of software measurement programs', url:'https://ieeexplore.ieee.org/abstract/document/9246551', score:1.0, methods:['Model walkthrough'] },
+          { code:'PS49', title:'A multi-criteria distribution model for global software development projects', url:'https://link.springer.com/article/10.1007/s13173-010-0010-6', score:1.0, methods:['Model walkthrough'] },
+          { code:'PS50', title:'A prioritization approach for software test cases based on bayesian networks', url:'https://link.springer.com/chapter/10.1007/978-3-540-71289-3_22', score:0.5, methods:['Proof of concept'] },
+          { code:'PS52', title:'Probabilistic risk assessment for security requirements: A preliminary study', url:'https://ieeexplore.ieee.org/abstract/document/5991999', score:0.5, methods:['Model walkthrough'] },
+          { code:'PS53', title:'V&V-based remaining fault estimation model for safety–critical software of a nuclear power plant', url:'https://www.sciencedirect.com/science/article/pii/S0306454912003039', score:1.0, methods:['Case study'] },
+          { code:'PS56', title:'Development of a Bayesian belief network model for software reliability quantification of digital protection systems in nuclear power plants', url:'https://www.sciencedirect.com/science/article/pii/S0306454918302299', score:0.5, methods:['Proof of concept'] },
+          { code:'PS57', title:'Data-driven risk management for requirements engineering: An automated approach based on Bayesian networks', url:'https://ieeexplore.ieee.org/abstract/document/9218189', score:1.0, methods:['Case study'] },
+          { code:'PS58', title:'Supporting defect causal analysis in practice with cross-company data on causes of requirements engineering problems', url:'https://ieeexplore.ieee.org/abstract/document/7965446', score:1.0, methods:['Case study'] }
+        ]
+      },
+      {
+        name: '3.2. Data-driven validation',
+        methods: ['Predictive accuracy','Cross-validation','Statistical measures', 'Comparison with existing models'],
+        studies: [
+          { code:'PS3', title:'Towards improving decision making and estimating the value of decisions in value-based software engineering: the VALUE framework', url:'https://link.springer.com/article/10.1007/s11219-017-9360-z', score:1.0, methods:['Predictive accuracy'] },
+          { code:'PS4', title:'Using knowledge elicitation to improve Web effort estimation: Lessons from six industrial case studies', url:'https://ieeexplore.ieee.org/abstract/document/6227108', score:1.0, methods:['Predictive accuracy'] },
+          { code:'PS5', title:'An expert-based requirements effort estimation model using bayesian networks', url:'https://link.springer.com/chapter/10.1007/978-3-319-27033-3_6', score:1.0, methods:['Predictive accuracy'] },
+          { code:'PS6', title:'Using expert-based bayesian networks as decision support systems to improve project management of healthcare software projects', url:'https://www.scitepress.org/PublishedPapers/2013/44341/pdf/index.html', score:1.0, methods:['Predictive accuracy'] },
+          { code:'PS8', title:'A bayesian networks-based approach to assess and improve the teamwork quality of agile teams', url:'https://www.sciencedirect.com/science/article/abs/pii/S0950584917300204', score:1.0, methods:['Predictive accuracy'] },
+          { code:'PS10', title:'Advanced Bayesian Network for Task Effort Estimation in Agile Software Development', url:'https://www.mdpi.com/2076-3417/13/16/9465', score:1.0, methods:['Cross-validation', 'Statistical measures'] },
+          { code:'PS11', title:'Software defects estimation using metrics of early phases of software development life cycle', url:'https://link.springer.com/article/10.1007/s13198-014-0326-2', score:1.0, methods:['Statistical measures'] },
+          { code:'PS13', title:'Bayesian networks for evidence-based decision-making in software engineering', url:'https://ieeexplore.ieee.org/abstract/document/6808495', score:1.0, methods:['Statistical measures'] },
+          { code:'PS14', title:'Assisting novice software designers by an expert designer agent', url:'https://www.sciencedirect.com/science/article/abs/pii/S0957417407001716', score:1.0, methods:['Statistical measures'] },
+          { code:'PS15', title:'Constructing a Bayesian Belief Network to predict final quality in embedded system development', url:'https://globals.ieice.org/en_transactions/information/10.1093/ietisy/e88-d.6.1134/_p', score:1.0, methods:['Cross-validation', 'Statistical measures'] },
+          { code:'PS16', title:'An approach to probabilistic effort estimation for military avionics software maintenance by considering structural characteristics', url:'https://ieeexplore.ieee.org/abstract/document/4425881', score:1.0, methods:['Cross-validation', 'Statistical measures'] },
+          { code:'PS18', title:'Improving fault prediction using Bayesian networks for the development of embedded software applications', url:'https://onlinelibrary.wiley.com/doi/abs/10.1002/stvr.353', score:1.0, methods:['Predictive accuracy'] },
+          { code:'PS19', title:'On the effectiveness of early life cycle defect prediction with Bayesian nets', url:'https://link.springer.com/article/10.1007/s10664-008-9072-x', score:1.0, methods:['Predictive accuracy', 'Statistical measures'] },
+          { code:'PS20', title:'Probabilistic modelling for software quality control', url:'https://www.tandfonline.com/doi/abs/10.3166/jancl.12.173-188', score:1.0, methods:['Predictive accuracy'] },
+          { code:'PS22', title:'Predicting project velocity in xp using a learning dynamic bayesian network model', url:'https://ieeexplore.ieee.org/abstract/document/4624275', score:1.0, methods:['Statistical measures'] },
+          { code:'PS27', title:'A probabilistic model for predicting software development effort', url:'https://ieeexplore.ieee.org/abstract/document/1492375', score:1.0, methods:['Comparison with existing models'] },
+          { code:'PS28', title:'On the use of Bayesian belief networks for the prediction of software productivity', url:'https://www.sciencedirect.com/science/article/abs/pii/S0950584902001635', score:1.0, methods:['Predictive accuracy'] },
+          { code:'PS30', title:'Predicting software suitability using a Bayesian belief network', url:'https://ieeexplore.ieee.org/abstract/document/1607435', score:1.0, methods:['Cross-validation'] },
+          { code:'PS31', title:'A bayesian network approach to assist on the interpretation of software metrics', url:'https://dl.acm.org/doi/abs/10.1145/2695664.2695749', score:1.0, methods:['Predictive accuracy'] },
+          { code:'PS32', title:'Predicting software test effort in iterative development using a dynamic Bayesian network', url:'https://www.diva-portal.org/smash/record.jsf?pid=diva2%3A835329&dswid=6444', score:1.0, methods:['Statistical measures'] },
+          { code:'PS34', title:'A technique for early prediction of software reliability based on design metrics', url:'https://link.springer.com/article/10.1007/s13198-011-0078-1', score:1.0, methods:['Statistical measures', 'Comparison with existing models'] },
+          { code:'PS36', title:'Using bayesian belief networks to predict change propagation in software systems', url:'https://ieeexplore.ieee.org/abstract/document/4268252', score:1.0, methods:['Predictive accuracy', 'Statistical measures'] },
+          { code:'PS38', title:'Toward predicting software development success from the perspective of practitioners: an exploratory Bayesian model', url:'https://journals.sagepub.com/doi/abs/10.1057/palgrave.jit.2000044', score:1.0, methods:['Cross-validation'] },
+          { code:'PS39', title:'User story estimation based on the complexity decomposition using Bayesian networks', url:'https://link.springer.com/article/10.1134/s0361768820080095', score:1.0, methods:['Statistical measures'] },
+          { code:'PS42', title:'A method to estimate software strategic indicators in software development: An industrial application', url:'https://www.sciencedirect.com/science/article/abs/pii/S0950584920301890', score:1.0, methods:['Predictive accuracy'] },
+          { code:'PS44', title:'Requirement Change Prediction Model for Small Software Systems', url:'https://www.mdpi.com/2073-431X/12/8/164', score:1.0, methods:['Statistical measures', 'Comparison with existing models'] },
+          { code:'PS45', title:'A Bayesian critical path method for managing common risks in software project scheduling', url:'https://dl.acm.org/doi/abs/10.1145/3287921.3287962', score:1.0, methods:['Predictive accuracy'] },
+          { code:'PS48', title:'Modeling web quality using a probabilistic approach: An empirical validation', url:'https://dl.acm.org/doi/abs/10.1145/1806916.1806918', score:1.0, methods:['Statistical measures'] },
+          { code:'PS51', title:'Test case prioritisation during web application testing', url:'https://www.inderscienceonline.com/doi/abs/10.1504/IJCAT.2017.088200', score:1.0, methods:['Statistical measures', 'Comparison with existing models'] },
+          { code:'PS54', title:'A bayesian belief network based model for predicting software faults in early phase of software development process', url:'https://link.springer.com/article/10.1007/s10489-017-1078-x', score:1.0, methods:['Statistical measures', 'Comparison with existing models'] },
+          { code:'PS55', title:'Maintenance process modeling and dynamic estimations based on Bayesian networks and association rules', url:'https://onlinelibrary.wiley.com/doi/full/10.1002/smr.2163', score:1.0, methods:['Statistical measures'] },
+          { code:'PS57', title:'Data-driven risk management for requirements engineering: An automated approach based on Bayesian networks', url:'https://ieeexplore.ieee.org/abstract/document/9218189', score:1.0, methods:['Cross-validation', 'Statistical measures'] },
+          { code:'PS59', title:'Intelligent analysis model for outsourced software project risk using constraint-based Bayesian Network', url:'https://www.researchgate.net/profile/Xiangzhou-Zhang-2/publication/265053365_Intelligent_Analysis_Model_for_Outsourced_Software_Project_Risk_Using_Constraint-based_Bayesian_Network/links/55f6527a08ae6a34f6633272/Intelligent-Analysis-Model-for-Outsourced-Software-Project-Risk-Using-Constraint-based-Bayesian-Network.pdf', score:1.0, methods:['Cross-validation', 'Statistical measures', 'Comparison with existing models'] },
+          { code:'PS60', title:'Software project risk analysis using Bayesian networks with causality constraints', url:'https://www.sciencedirect.com/science/article/pii/S0167923612003338', score:1.0, methods:['Cross-validation', 'Comparison with existing models'] },
+          { code:'PS61', title:'Bayesian belief networks as a software productivity estimation tool', url:'https://d1wqtxts1xzle7.cloudfront.net/30803925/10.1.1.108.7639-libre.pdf?1363398575=&response-content-disposition=inline%3B+filename%3DBayesian_belief_networks_as_a_software_p.pdf&Expires=1775698871&Signature=ABlMOEIOGDeTFRzyKu4T1k9JdXlPkX2hlt76o2CW2S61sFDGK0FeUEQxLJxKLSV4hjUwNfJyZjzGcFACE~wgwNfomfLt8nTdxV0mYBj0QxORIvjhmyR4nw3g1tNa6W4FxXpGuWNM0ShfpbakhwU4NpBeE3LHKdiykaYlKCEaYVmbJXU26TgxQj9vTBZA1j4sp6h8W0DLjKVBdfAHw-KL-Cfmp3tiI1PM8w2OxhYQUX3oNzK-UqIWb~6NClrzX6SKlLrlxHxTclI9NRQS17K1wnmzCdQhR5~ZC5ED2EdyYzL~h4FmFYZ2~fsNGdtO~ebrhPUNRVrrHFndaZ3K5nnQ-g__&Key-Pair-Id=APKAJLOHF5GGSLRBV4ZA', score:1.0, methods:['Statistical measures'] },
+          { code:'PS62', title:'A Bayesian belief network cost estimation model that incorporates cultural and project leadership factors', url:'https://ieeexplore.ieee.org/abstract/document/5356306', score:1.0, methods:['Statistical measures'] },
+          { code:'PS63', title:'The use of a bayesian network for web effort estimation', url:'https://link.springer.com/chapter/10.1007/978-3-540-73597-7_8', score:1.0, methods:['Predictive accuracy', 'Statistical measures'] },
+          { code:'PS64', title:'Software project schedule variance prediction using Bayesian Network', url:'https://ieeexplore.ieee.org/abstract/document/5552847/', score:1.0, methods:['Predictive accuracy'] },
+          { code:'PS65', title:'Probabilistic and analytical estimation of software development team size', url:'https://journals.sagepub.com/doi/abs/10.3233/HIS-2010-0110', score:1.0, methods:['Cross-validation'] },
+          { code:'PS66', title:'Multi-step generation of bayesian networks models for software projects estimations', url:'https://link.springer.com/article/10.1080/18756891.2013.805583', score:1.0, methods:['Statistical measures'] }
+        ]
+      }
+    ]
+  }
+];
+
+// =============================
+// RENDERIZAÇÃO
+// =============================
+const elPhases = document.getElementById('phases');
+const q = document.getElementById('q');
+const onlyTop = document.getElementById('onlyTop');
+const expandAllBtn = document.getElementById('expandAll');
+const listBtn = document.getElementById('listStudies');
+
+function render(){
+  elPhases.innerHTML = '';
+  const query = (q.value || '').toLowerCase().trim();
+  const only1 = !!onlyTop.checked;
+
+  DATA.forEach((ph)=>{
+    const phEl = document.createElement('section');
+    phEl.className = 'phase';
+    phEl.innerHTML = `
+      <div class=\"phase-head\">
+        <div class=\"phase-title\">${ph.phase}</div>
+        <div class=\"phase-meta\">${ph.info}</div>
+      </div>
+    `;
+
+    // Para cálculo de "referências" (1,0 em TODAS as atividades da fase)
+    const refTracker = new Map(); // code -> hits por atividade com 1,0
+    const totalActs = ph.activities.length;
+
+    ph.activities.forEach((ac)=>{
+      // Filtragem por busca/filtro
+      const filtered = ac.studies.filter(s=>{
+        if(only1 && s.score !== 1.0) return false;
+        if(!query) return true;
+        const inCode = s.code.toLowerCase().includes(query);
+        const inTitle = (s.title||'').toLowerCase().includes(query);
+        const inMeth = (s.methods||[]).some(m=>m.toLowerCase().includes(query)) || ac.methods.some(m=>m.toLowerCase().includes(query));
+        return inCode || inTitle || inMeth;
+      });
+      if(query && filtered.length===0) return; // oculta atividade sem match
+
+      const act = document.createElement('div');
+      act.className = 'activity';
+      act.setAttribute('aria-expanded','false');
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.innerHTML = `<span>${ac.name}</span><span class=\"caret\">▶</span>`;
+      btn.addEventListener('click',()=>{
+        const expanded = act.getAttribute('aria-expanded')==='true';
+        act.setAttribute('aria-expanded', String(!expanded));
+      });
+      act.appendChild(btn);
+
+      const panel = document.createElement('div');
+      panel.className = 'activity-panel';
+
+      // Métodos (chips)
+      const methWrap = document.createElement('div');
+      methWrap.className = 'methods';
+      ac.methods.forEach(m=>{
+        const tag = document.createElement('span');
+        tag.className = 'method';
+        tag.tabIndex = 0; // acessível
+        tag.textContent = m;
+        methWrap.appendChild(tag);
+      });
+      panel.appendChild(methWrap);
+
+      // Estudos (chips)
+      const studiesWrap = document.createElement('div');
+      studiesWrap.className = 'studies';
+      filtered.forEach(s=>{
+        const a = document.createElement('a');
+        a.href = s.url || '#';
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        a.className = 'study-chip';
+        a.setAttribute('aria-label', s.title || s.code);
+        a.innerHTML = `<span class=\"score ${s.score===1.0?'ok':'mid'}\"></span>${s.code}`;
+        studiesWrap.appendChild(a);
+
+        // Hover/foco → destacar métodos do estudo (estudo → métodos)
+        const methodEls = Array.from(methWrap.querySelectorAll('.method'));
+        const map = new Map(methodEls.map(el=>[el.textContent.toLowerCase(), el]));
+        const enter=()=>{
+          if(!(s.methods&&s.methods.length)) return;
+          methodEls.forEach(m=>m.classList.add('method--dim'));
+          s.methods.map(m=>m.toLowerCase()).forEach(k=>{ const el=map.get(k); if(el) el.classList.add('method--active'); });
+        };
+        const leave=()=>{ methodEls.forEach(m=>m.classList.remove('method--active','method--dim')); };
+        a.addEventListener('mouseenter', enter);
+        a.addEventListener('mouseleave', leave);
+        a.addEventListener('focusin', enter);
+        a.addEventListener('focusout', leave);
+
+        // Ref tracker: conta 1,0 por atividade
+        if(s.score===1.0){
+          const prev = refTracker.get(s.code) || {hits:0};
+          refTracker.set(s.code, {hits: prev.hits+1});
+        }
+      });
+      panel.appendChild(studiesWrap);
+
+      // Destaque inverso: método → estudos
+      (function(){
+        const studyItems = Array.from(studiesWrap.querySelectorAll('.study-chip')).map(a=>({
+          el:a,
+          code:a.textContent.trim(),
+          methods: (function(){
+            const code=a.textContent.trim();
+            // procura o estudo nesta atividade em particular
+            const s = ac.studies.find(st=>st.code===code);
+            return s ? (s.methods||[]).map(m=>m.toLowerCase()) : [];
+          })()
+        }));
+        const methodEls = Array.from(methWrap.querySelectorAll('.method'));
+        methodEls.forEach(mEl=>{
+          const key = mEl.textContent.toLowerCase();
+          const enter=()=>{
+            let any=false;
+            studyItems.forEach(si=>{ if(si.methods.includes(key)) any=true; });
+            if(!any) return;
+            studyItems.forEach(si=>{
+              if(si.methods.includes(key)) si.el.classList.add('study--active');
+              else si.el.classList.add('study--dim');
+            });
+          };
+          const leave=()=>{ studyItems.forEach(si=>si.el.classList.remove('study--active','study--dim')); };
+          mEl.addEventListener('mouseenter', enter);
+          mEl.addEventListener('mouseleave', leave);
+          mEl.addEventListener('focusin', enter);
+          mEl.addEventListener('focusout', leave);
+        });
+      })();
+
+      act.appendChild(panel);
+      phEl.appendChild(act);
+    });
+
+    // Bloco de referências (estudos com 1,0 em TODAS as atividades da fase)
+    // Bloco de referências (definido manualmente em cada fase, em formato de lista)
+    const refs = Array.isArray(ph.exemplarReferences) ? ph.exemplarReferences : [];
+
+    const refBox = document.createElement('div');
+    refBox.className = 'refs';
+
+    if (refs.length) {
+    const title = document.createElement('h4');
+    title.textContent = 'Exemplars';
+    refBox.appendChild(title);
+
+    const list = document.createElement('ul');
+    list.style.margin = '8px 0 0 18px';
+    list.style.padding = '0';
+    list.style.color = 'var(--txt)';
+    list.style.fontSize = '13px';
+    list.style.lineHeight = '1.65';
+
+    refs.forEach(ref => {
+        const item = document.createElement('li');
+        //item.textContent = ref;
+        item.innerHTML = ref;
+        item.style.marginBottom = '8px';
+        list.appendChild(item);
+    });
+
+    refBox.appendChild(list);
+    } else {
+    refBox.innerHTML = '<h4>Exemplars</h4><div class="empty">No exemplar references were manually defined for this phase.</div>';
+    }
+
+    phEl.appendChild(refBox);
+    // Bloco de referências termina aqui
+    elPhases.appendChild(phEl);
+  });
+}
+
+// Inicializa
+render();
+
+// Controles superiores
+q.addEventListener('input', render);
+onlyTop.addEventListener('change', render);
+expandAllBtn.addEventListener('click', ()=>{
+  const acts = document.querySelectorAll('.activity');
+  const anyClosed = Array.from(acts).some(a=>a.getAttribute('aria-expanded')==='false');
+  acts.forEach(a=>a.setAttribute('aria-expanded', anyClosed?'true':'false'));
+});
+
+// ===== Modal: Listar estudos =====
+(function(){
+  const btn = document.getElementById('listStudies');
+  const modal = document.getElementById('studiesModal');
+  const close = document.getElementById('closeModal');
+  const list = document.getElementById('studiesList');
+  if(!btn || !modal || !list) return;
+
+  function gatherStudies(){
+    const map = new Map(); // code -> title
+    DATA.forEach(ph=>{
+      ph.activities.forEach(ac=>{
+        ac.studies.forEach(s=>{
+          if(!map.has(s.code)) map.set(s.code, s.title||s.code);
+        });
+      });
+    });
+    return Array.from(map.entries()).sort((a,b)=>{
+      const na = parseInt(a[0].replace(/\D+/g,''))||0;
+      const nb = parseInt(b[0].replace(/\D+/g,''))||0;
+      return na-nb || a[0].localeCompare(b[0]);
+    });
+  }
+
+  function openModal(){
+    list.innerHTML = '';
+    gatherStudies().forEach(([code,title])=>{
+      const item = document.createElement('div');
+      item.className = 'item';
+      const codeEl = document.createElement('div');
+      codeEl.className = 'code';
+      codeEl.textContent = code;
+      const titleEl = document.createElement('div');
+      titleEl.textContent = '— ' + title;
+      item.appendChild(codeEl);
+      item.appendChild(titleEl);
+      list.appendChild(item);
+    });
+
+    modal.classList.add('active');
+    modal.setAttribute('aria-hidden','false');
+  }
+  function closeModal(){
+    modal.classList.remove('active');
+    modal.setAttribute('aria-hidden','true');
+  }
+
+  btn.addEventListener('click', openModal);
+  close.addEventListener('click', closeModal);
+  modal.addEventListener('click', (e)=>{ if(e.target.hasAttribute('data-close')) closeModal(); });
+  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeModal(); });
+})();
+</script>
+</body>
+</html>
